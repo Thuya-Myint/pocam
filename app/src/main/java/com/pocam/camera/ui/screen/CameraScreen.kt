@@ -42,6 +42,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
@@ -50,6 +51,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import com.pocam.camera.ui.components.modeSymbol
 import androidx.compose.runtime.Composable
@@ -103,7 +106,9 @@ fun CameraScreen() {
     }
     DisposableEffect(controller) { onDispose { controller.release() } }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+        val availableHeight = maxHeight
+        val proMaxHeight = (availableHeight - 190.dp).coerceAtLeast(160.dp)
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -160,10 +165,10 @@ fun CameraScreen() {
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 72.dp, bottom = 110.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
-            Column(Modifier.heightIn(max = 480.dp)
+            Column(Modifier.heightIn(max = proMaxHeight).verticalScroll(rememberScrollState())
                 .background(Color(0xEB17191E), RoundedCornerShape(18.dp))
                 .padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -207,7 +212,10 @@ fun CameraScreen() {
                 Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
                     tint = if (lastPhoto == null) Color.Gray else Color.White)
             }
-            Box(Modifier.size(100.dp), contentAlignment = Alignment.Center) {
+            Spacer(Modifier.width(100.dp))
+        }
+        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 0.dp),
+            contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode,
                     onCapture = {
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
@@ -233,7 +241,9 @@ fun CameraScreen() {
                         exposureIndex = 0
                         controller.setExposure(0)
                     })
-            }
+        }
+        /* Camera flip sits above the shutter gesture region. */
+        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 28.dp)) {
             IconButton(onClick = {
                 previewView?.let { view ->
                     controller.flip(owner, view, { error = it }) {
@@ -259,7 +269,7 @@ fun CameraScreen() {
         }
         Text("Hold shutter to change mode", color = Color(0xFFBFC2C9),
             fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = 112.dp))
+                .padding(bottom = 174.dp))
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xCC550000)).padding(12.dp))
