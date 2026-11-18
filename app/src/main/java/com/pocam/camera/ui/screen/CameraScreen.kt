@@ -93,6 +93,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
+import com.pocam.camera.ui.components.RadialModeWheel
 import com.pocam.camera.ui.components.ShutterButton
 import com.pocam.camera.ui.components.PerformanceHud
 import com.pocam.camera.ui.components.ManualControls
@@ -124,6 +125,7 @@ fun CameraScreen() {
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
     var wheelOpen by remember { mutableStateOf(false) }
+    var wheelHover by remember { mutableStateOf(CameraMode.PHOTO) }
     var captureFlash by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     var focusSequence by remember { mutableStateOf(0) }
@@ -156,7 +158,6 @@ fun CameraScreen() {
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
@@ -216,54 +217,6 @@ fun CameraScreen() {
                 if (performanceEnabled) PerformanceHud()
             }
         }
-        // Persistent quick actions must render above the camera TextureView.
-        AnimatedVisibility(!wheelOpen,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 92.dp),
-            enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
-            Row(Modifier.background(Color(0xE822252D), RoundedCornerShape(28.dp))
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    gridEnabled = !gridEnabled
-                    preferences.edit().putBoolean("grid", gridEnabled).apply()
-                }) {
-                    Icon(Icons.Rounded.GridOn, contentDescription = "Grid",
-                        tint = if (gridEnabled) Color(0xFFFFD88C) else Color.White)
-                }
-                IconButton(onClick = {
-                    if (controller.hasTorch()) {
-                        torchEnabled = !torchEnabled
-                        controller.setTorch(torchEnabled)
-                    }
-                }) {
-                    Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
-                        contentDescription = "Torch",
-                        tint = if (torchEnabled) Color(0xFFFFD88C) else Color.White)
-                }
-                IconButton(onClick = {
-                    timerSeconds = when (timerSeconds) {
-                        0 -> 3
-                        3 -> 5
-                        5 -> 10
-                        else -> 0
-                    }
-                    preferences.edit().putInt("timer", timerSeconds).apply()
-                }) {
-                    Text(if (timerSeconds == 0) "OFF" else "${timerSeconds}s",
-                        color = if (timerSeconds == 0) Color.White else Color(0xFFFFD88C),
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-                IconButton(onClick = { showSettings = !showSettings }) {
-                    Icon(Icons.Rounded.Tune, contentDescription = "Settings", tint = Color.White)
-                }
-                if (mode == CameraMode.PRO) {
-                    IconButton(onClick = { showProPanel = !showProPanel }) {
-                        Text("PRO", color = Color(0xFFFFD88C), fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 98.dp),
@@ -312,6 +265,12 @@ fun CameraScreen() {
                     }
                 }
             }
+        }
+        AnimatedVisibility(wheelOpen,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 246.dp),
+            enter = fadeIn(tween(140)) + scaleIn(initialScale = 0.78f),
+            exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.78f)) {
+            RadialModeWheel(wheelHover)
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter)
             .padding(top = 164.dp, start = 12.dp, end = 12.dp),
@@ -468,7 +427,7 @@ fun CameraScreen() {
                         exposureRange = controller.exposureRange()
                         exposureIndex = 0
                         controller.setExposure(0)
-                    }, onWheelChange = { wheelOpen = it })
+                    }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
 
             }
             Box(Modifier.size(52.dp)
