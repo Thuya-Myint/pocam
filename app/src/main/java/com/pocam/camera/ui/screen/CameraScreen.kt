@@ -296,11 +296,6 @@ fun CameraScreen() {
             }
             }
         }
-        if (wheelOpen) {
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 154.dp).zIndex(20f)) {
-                RadialModeWheel(wheelHover)
-            }
-        }
         if (showSettings && !wheelOpen) {
             Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
                 .padding(top = 164.dp, start = 12.dp, end = 12.dp)
@@ -411,6 +406,9 @@ fun CameraScreen() {
                     tint = if (lastPhoto == null) Color.LightGray else Color.White)
             }
             Box(contentAlignment = Alignment.Center) {
+                if (wheelOpen) {
+                    RadialModeWheel(wheelHover, Modifier.zIndex(1f))
+                }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
                     onCapture = {

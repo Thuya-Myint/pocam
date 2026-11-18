@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,12 +35,14 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
         else Color(0xFFFFD88C)
     }
+    val selectedIndex = wheelModes.indexOf(selected).coerceAtLeast(0)
+    val rotation by animateFloatAsState(-selectedIndex * 60f, spring(stiffness = 260f), label = "mode carousel rotation")
     Box(modifier.size(252.dp)
         .background(Color(0xED1B1E26), CircleShape)
         .border(1.dp, Color.White.copy(alpha = .22f), CircleShape),
         contentAlignment = Alignment.Center) {
         wheelModes.forEachIndexed { index, mode ->
-            val angle = Math.toRadians((index * 60 - 90).toDouble())
+            val angle = Math.toRadians((index * 60 - 90 + rotation).toDouble())
             val x = (88.0 * cos(angle)).toFloat().dp
             val y = (88.0 * sin(angle)).toFloat().dp
             val active = selected == mode
@@ -51,11 +55,7 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
                     fontSize = 25.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Box(Modifier.size(52.dp).background(Color(0xFF252A33), CircleShape),
-            contentAlignment = Alignment.Center) {
-            Text(modeSymbol(selected), color = accent, fontSize = 27.sp,
-                fontWeight = FontWeight.Bold)
-        }
+
     }
 }
 
