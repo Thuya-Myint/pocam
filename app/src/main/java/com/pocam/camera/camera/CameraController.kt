@@ -107,8 +107,8 @@ class CameraController(private val context: Context) {
         return "camera=$id focal=$focal zoom=$ratio recording=$recordingActive"
     }
     fun setPhotoQuality(highQuality: Boolean) {
+        // A fast capture pipeline avoids OEM-specific processing timeouts.
         capture.flashMode = ImageCapture.FLASH_MODE_OFF
-        // ImageCapture mode is configured at construction; use a quality-first default.
     }
     private var manualIso: Int? = null
     private var manualExposureNs: Long? = null
@@ -200,7 +200,7 @@ class CameraController(private val context: Context) {
 
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
-        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
         .build()
 
     fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
@@ -242,8 +242,7 @@ class CameraController(private val context: Context) {
                         val extensions = extensionFuture.get()
                         // Keep ordinary Photo mode on the stable CameraX pipeline.
                         // OEM HDR extensions can report success at bind time but fail processing.
-                        val selectedExtension = if (mode == CameraMode.NIGHT ||
-                            mode == CameraMode.PORTRAIT) extensionMode else -1
+                        val selectedExtension = -1 // OEM extension processing is disabled until device validation
                         val selector = if (selectedExtension != -1 &&
                             requestedId == null && extensions.isExtensionAvailable(chosenBase, selectedExtension)) {
                             extensions.getExtensionEnabledCameraSelector(chosenBase, selectedExtension)
@@ -387,12 +386,10 @@ class CameraController(private val context: Context) {
         val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
             .setAutoCancelDuration(3, TimeUnit.SECONDS).build()
         try {
-            val future = activeCamera.cameraControl.startFocusAndMetering(action)
-            future.addListener({
-                // A completed AF attempt is not proof of focus lock; capture
-                // regardless to avoid indefinite shutter delays on fixed-focus lenses.
-                takePhoto(onSaved, onError)
-            }, ContextCompat.getMainExecutor(context))
+            // Capture immediately; an AF future can stall on some OEM implementations.
+            activeCamera.cameraControl.startFocusAndMetering(action)
+            takePhoto(onSaved, onError)
+            return
         } catch (_: Exception) {
             takePhoto(onSaved, onError)
         }

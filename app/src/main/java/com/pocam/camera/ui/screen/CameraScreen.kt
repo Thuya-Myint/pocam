@@ -334,6 +334,9 @@ fun CameraScreen() {
                 onTorch = { torchEnabled = it; controller.setTorch(it) },
                 timer = timerSeconds,
                 videoQuality = videoQuality,
+                exposure = exposureIndex,
+                exposureRange = exposureRange,
+                onExposure = { exposureIndex = it; controller.setExposure(it) },
                 onVideoQuality = { selected ->
                     videoQuality = selected
                     preferences.edit().putString("video_quality", selected).apply()
@@ -539,8 +542,6 @@ fun CameraScreen() {
                                 maxZoom = controller.maxZoom()
                             activeLensId = controller.activeCameraId()
                             activeFocalMm = controller.activeFocalLength()
-                                activeLensId = controller.activeCameraId()
-                                activeFocalMm = controller.activeFocalLength()
                             }, it)
                         }
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })

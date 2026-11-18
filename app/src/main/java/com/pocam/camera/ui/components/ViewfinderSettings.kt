@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
+import kotlin.math.roundToInt
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
@@ -41,6 +43,9 @@ fun ViewfinderSettings(
     onTimer: (Int) -> Unit,
     videoQuality: String,
     onVideoQuality: (String) -> Unit,
+    exposure: Int,
+    exposureRange: IntRange,
+    onExposure: (Int) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,6 +67,12 @@ fun ViewfinderSettings(
         SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
         SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
         SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
+        if (exposureRange.first < exposureRange.last) {
+            Text("EXPOSURE  ${exposure}", color = Color.LightGray, fontSize = 11.sp)
+            Slider(value = exposure.toFloat().coerceIn(exposureRange.first.toFloat(), exposureRange.last.toFloat()),
+                valueRange = exposureRange.first.toFloat()..exposureRange.last.toFloat(),
+                onValueChange = { onExposure(it.roundToInt()) })
+        }
         Text("VIDEO RESOLUTION", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
