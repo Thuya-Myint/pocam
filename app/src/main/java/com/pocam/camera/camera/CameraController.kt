@@ -213,7 +213,14 @@ class CameraController(private val context: Context) {
                 val baseSelector = if (front) CameraSelector.DEFAULT_FRONT_CAMERA
                     else CameraSelector.DEFAULT_BACK_CAMERA
                 val requestedId = if (front) null else requestedLensId
-                val chosenBase = if (requestedId == null) baseSelector else CameraSelector.Builder()
+                val bindableIds = cameraProvider.availableCameraInfos.mapNotNull { info ->
+                    try { Camera2CameraInfo.from(info).cameraId } catch (_: Exception) { null }
+                }.toSet()
+                if (requestedId != null && requestedId !in bindableIds) {
+                    Log.w("PocamCamera", "Requested physical lens $requestedId unavailable through CameraX; using default rear camera")
+                    requestedLensId = null
+                }
+                val chosenBase = if (requestedId == null || requestedId !in bindableIds) baseSelector else CameraSelector.Builder()
                     .addCameraFilter { infos ->
                         infos.filter { info ->
                             Camera2CameraInfo.from(info).cameraId == requestedId
@@ -400,26 +407,28 @@ class CameraController(private val context: Context) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/Pocam")
             }
         }
-        val uri = context.contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        if (uri == null) {
-            onError("Could not create photo in gallery")
-            return
-        }
+        // Let CameraX create the MediaStore entry exactly once. Supplying an
+        // already-inserted item URI as a collection can cause processing errors.
         val output = ImageCapture.OutputFileOptions.Builder(
-            context.contentResolver, uri, values).build()
+            context.contentResolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values).build()
+        try {
         capture.takePicture(output, ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                    onSaved(result.savedUri ?: uri)
+                    val saved = result.savedUri
+                    if (saved != null) onSaved(saved)
+                    else onError("Photo saved but gallery URI was unavailable")
                 }
                 override fun onError(exception: ImageCaptureException) {
                     Log.e("PocamCamera", "ImageCapture failed: code=${exception.imageCaptureError}", exception)
-                    context.contentResolver.delete(uri, null, null)
                     onError("Photo capture failed (${exception.imageCaptureError}): " +
                         (exception.message ?: "Camera processing error"))
                 }
             })
+        } catch (e: Exception) {
+            Log.e("PocamCamera", "Unable to start photo capture", e)
+            onError(e.message ?: "Unable to start photo capture")
+        }
     }
 
     private fun saveLegacyPhoto(name: String, onSaved: (Uri) -> Unit,
