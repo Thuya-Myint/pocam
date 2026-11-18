@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.scale
 
 @Composable
 fun CameraGrid(modifier: Modifier = Modifier) {
@@ -63,7 +64,7 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
             val active = value == selected
             val scale by animateFloatAsState(if (active) 1.08f else 1f,
                 tween(180, easing = FastOutSlowInEasing), label = "zoom pill")
-            Box(Modifier.size(if (active) 43.dp else 38.dp)
+            Box(Modifier.size(43.dp).scale(scale)
                 .background(if (active) Color.White else Color.Transparent, CircleShape)
                 .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
                 Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
