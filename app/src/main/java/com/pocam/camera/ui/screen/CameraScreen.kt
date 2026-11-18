@@ -171,8 +171,9 @@ fun CameraScreen() {
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
                             controller.focusAt(this, event.x, event.y)
-                            focusPoint = Pair(event.x / width.coerceAtLeast(1),
-                                event.y / height.coerceAtLeast(1))
+                            focusPoint = Pair(
+                                (event.x / width.coerceAtLeast(1)).coerceIn(0f, 1f),
+                                (event.y / height.coerceAtLeast(1)).coerceIn(0f, 1f))
                             focusSequence++
                             view.performClick()
                         }
@@ -192,11 +193,17 @@ fun CameraScreen() {
         }
         focusPoint?.let { point ->
             val density = LocalDensity.current
+            val reticleSize = with(density) { 64.dp.roundToPx() }
             val x = with(density) { (maxWidth * point.first).toPx() }
             val y = with(density) { (maxHeight * point.second).toPx() }
             FocusReticle(point.first, point.second,
-                Modifier.offset { IntOffset(x.toInt() - with(density) { 32.dp.roundToPx() },
-                    y.toInt() - with(density) { 32.dp.roundToPx() }) })
+                Modifier.offset {
+                    IntOffset(
+                        (x.toInt() - reticleSize / 2).coerceIn(0,
+                            (size.width - reticleSize).coerceAtLeast(0)),
+                        (y.toInt() - reticleSize / 2).coerceIn(0,
+                            (size.height - reticleSize).coerceAtLeast(0)))
+                })
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
 
