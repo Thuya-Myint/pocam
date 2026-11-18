@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import com.pocam.camera.ui.components.modeSymbol
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +61,7 @@ fun CameraScreen() {
         }
         Text("pocam.", color = Color.White,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
-        Text(mode.name.lowercase(), color = Color.White,
+        Text(modeSymbol(mode), color = Color.White,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 34.dp))
         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
             ShutterButton(mode = mode,
