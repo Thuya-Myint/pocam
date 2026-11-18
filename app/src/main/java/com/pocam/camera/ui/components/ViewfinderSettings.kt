@@ -33,8 +33,6 @@ fun ViewfinderSettings(
     onTorch: (Boolean) -> Unit,
     timer: Int,
     onTimer: (Int) -> Unit,
-    performance: Boolean,
-    onPerformance: (Boolean) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -56,7 +54,6 @@ fun ViewfinderSettings(
         SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
         SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
         SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
-        SettingsSwitch("Performance HUD", performance, accent = accent) { onPerformance(!performance) }
         Text("CAPTURE TIMER", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

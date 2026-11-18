@@ -26,6 +26,12 @@ import androidx.compose.material.icons.rounded.Cameraswitch
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.BitmapFactory
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.FlashOff
 import androidx.compose.material.icons.rounded.GridOn
@@ -99,7 +105,6 @@ import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
 import com.pocam.camera.ui.components.RadialModeWheel
 import com.pocam.camera.ui.components.ShutterButton
-import com.pocam.camera.ui.components.PerformanceHud
 import com.pocam.camera.ui.components.ManualControls
 
 @Composable
@@ -144,7 +149,6 @@ fun CameraScreen() {
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
     var torchEnabled by remember { mutableStateOf(false) }
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
-    var performanceEnabled by remember { mutableStateOf(preferences.getBoolean("performance", false)) }
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
     var wheelOpen by remember { mutableStateOf(false) }
@@ -316,11 +320,6 @@ fun CameraScreen() {
                     timerSeconds = it
                     preferences.edit().putInt("timer", it).apply()
                 },
-                performance = performanceEnabled,
-                onPerformance = {
-                    performanceEnabled = it
-                    preferences.edit().putBoolean("performance", it).apply()
-                },
                 onClose = { showSettings = false }
             )
             }
@@ -423,8 +422,32 @@ fun CameraScreen() {
                         } catch (_: Exception) { error = "No photo viewer available" }
                     }
                 }, contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
-                    tint = if (lastPhoto == null) Color.LightGray else Color.White)
+                val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+                    initialValue = null, key1 = lastPhoto) {
+                    value = withContext(Dispatchers.IO) {
+                        lastPhoto?.let { uri ->
+                            try {
+                                context.contentResolver.openInputStream(uri)?.use { stream ->
+                                    BitmapFactory.decodeStream(stream)?.let { bitmap ->
+                                        val scale = 128f / maxOf(bitmap.width, bitmap.height)
+                                        val scaled = android.graphics.Bitmap.createScaledBitmap(
+                                            bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1),
+                                            (bitmap.height * scale).toInt().coerceAtLeast(1), true)
+                                        scaled.asImageBitmap()
+                                    }
+                                }
+                            } catch (_: Exception) { null }
+                        }
+                    }
+                }
+                if (thumbnail != null) {
+                    Image(bitmap = thumbnail!!, contentDescription = "Last captured photo",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape))
+                } else {
+                    Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
+                        tint = if (lastPhoto == null) Color.LightGray else Color.White)
+                }
             }
             Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                 if (wheelOpen) {

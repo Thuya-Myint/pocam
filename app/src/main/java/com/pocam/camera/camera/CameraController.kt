@@ -24,6 +24,7 @@ import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
+import androidx.camera.video.FallbackStrategy
 import com.pocam.camera.domain.model.CameraMode
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -93,6 +94,13 @@ class CameraController(private val context: Context) {
     private var recording: Recording? = null
     private var recordingActive = false
     fun isRecording(): Boolean = recordingActive
+    // Diagnostics remain available to developers, not shown in the viewfinder.
+    fun cameraDiagnostics(): String {
+        val id = activeCameraId() ?: "unbound"
+        val focal = activeFocalLength()?.let { String.format(Locale.US, "%.2f mm", it) } ?: "unknown"
+        val ratio = camera?.cameraInfo?.zoomState?.value?.zoomRatio ?: 1f
+        return "camera=$id focal=$focal zoom=$ratio recording=$recordingActive"
+    }
     fun setPhotoQuality(highQuality: Boolean) {
         capture.flashMode = ImageCapture.FLASH_MODE_OFF
         // ImageCapture mode is configured at construction; use a quality-first default.
@@ -236,7 +244,7 @@ class CameraController(private val context: Context) {
                         cameraProvider.unbindAll()
                         if (mode == CameraMode.VIDEO) {
                             val recorder = Recorder.Builder()
-                                .setQualitySelector(QualitySelector.from(Quality.HIGHEST)).build()
+                                .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD))).build()
                             val video = VideoCapture.withOutput(recorder)
                             camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
                             videoCapture = video
