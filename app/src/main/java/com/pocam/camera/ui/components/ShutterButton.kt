@@ -7,6 +7,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,10 +38,11 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}) {
+    val haptics = LocalHapticFeedback.current
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
     var pressing by remember { mutableStateOf(false) }
-    val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(), label = "shutter")
+    val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh), label = "shutter")
     Box(Modifier.size(264.dp), contentAlignment = Alignment.Center) {
         AnimatedVisibility(expanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
             RadialModeWheel(hovered)
@@ -61,9 +65,11 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                         }
                         if (releasedBeforeHold == true) {
                             pressing = false
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onCapture()
                         } else {
                             expanded = true
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             onWheelChange(true)
                             hovered = mode
                             var pressed = true
@@ -80,7 +86,11 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                     val dy = change.position.y - center.y
                                     if (hypot(dx, dy) > size.width * 0.45f) {
                                         val degrees = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
-                                        hovered = wheelModes[(degrees / 60.0).roundToInt() % 6]
+                                        val next = wheelModes[(degrees / 60.0).roundToInt() % 6]
+                                        if (next != hovered) {
+                                            hovered = next
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        }
                                     }
                                 }
                             }
