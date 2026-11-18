@@ -1,5 +1,9 @@
 package com.pocam.camera.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -23,14 +27,17 @@ val wheelModes = listOf(CameraMode.PHOTO, CameraMode.VIDEO, CameraMode.PORTRAIT,
 
 @Composable
 fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
-    Box(modifier.size(248.dp).background(Color(0xD91A1B1F), CircleShape)
+    val entrance = animateFloatAsState(1f, spring(dampingRatio = 0.72f), label = "wheel entrance")
+    Box(modifier.scale(entrance.value).size(248.dp).background(Color(0xD91A1B1F), CircleShape)
         .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center) {
         wheelModes.forEachIndexed { index, mode ->
             val angle = (index * 60.0 - 90.0) * PI / 180.0
             val active = mode == selected
+            val selectedScale = animateFloatAsState(if (active) 1.18f else 1f, spring(), label = "mode highlight")
             Box(
                 Modifier.offset(x = (91 * cos(angle)).dp, y = (91 * sin(angle)).dp)
+                    .scale(selectedScale.value)
                     .size(49.dp)
                     .background(if (active) Color.White else Color(0xFF303137), CircleShape)
                     .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape),
