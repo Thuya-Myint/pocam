@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 
 @Composable
@@ -43,6 +44,7 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit
                 .background(Color(0xFF202126), CircleShape)
                 .pointerInput(mode) {
                     awaitEachGesture {
+                        try {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         if (busyNow) {
                             do {
@@ -97,6 +99,11 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit
                             pressing = false
                             onWheelChange(false)
                             onModeSelected(hovered)
+                        }
+                        } finally {
+                            pressing = false
+                            expanded = false
+                            onWheelChange(false)
                         }
                     }
                 },
