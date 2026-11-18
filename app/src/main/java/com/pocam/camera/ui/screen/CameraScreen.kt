@@ -408,7 +408,7 @@ fun CameraScreen() {
                     tint = if (lastPhoto == null) Color.LightGray else Color.White)
             }
             Box(contentAlignment = Alignment.Center) {
-                ShutterButton(mode = mode,
+                ShutterButton(mode = mode, busy = captureBusy,
                     onCapture = {
                         if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
