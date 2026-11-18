@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -66,6 +67,8 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 @Composable
 fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Modifier) {
     var dragAccumulated by remember { mutableFloatStateOf(0f) }
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)) {
     Row(Modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
@@ -85,7 +88,7 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
         }
     }
     Row(Modifier.width(150.dp).height(20.dp)
-        .pointerInput(selected) {
+        .pointerInput(Unit) {
             detectHorizontalDragGestures(
                 onDragStart = { dragAccumulated = 0f },
                 onDragEnd = { dragAccumulated = 0f },
@@ -94,9 +97,9 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
                     dragAccumulated += amount
                     if (kotlin.math.abs(dragAccumulated) > 28.dp.toPx()) {
                         val values = listOf(1f, 2f, 4f)
-                        val current = values.indexOf(selected).coerceAtLeast(0)
+                        val current = values.indexOf(currentSelected).coerceAtLeast(0)
                         val direction = if (dragAccumulated > 0f) 1 else -1
-                        onSelect(values[(current + direction).coerceIn(0, values.lastIndex)])
+                        currentOnSelect(values[(current + direction).coerceIn(0, values.lastIndex)])
                         dragAccumulated = 0f
                     }
                 })
