@@ -388,7 +388,7 @@ fun CameraScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp)
-                .background(Color(0xFF323640), RoundedCornerShape(16.dp))
+                .background(Color(0xCC323640), CircleShape)
                 .clickable(enabled = lastPhoto != null) {
                     lastPhoto?.let { uri ->
                         try {
@@ -477,7 +477,7 @@ fun CameraScreen() {
                 }
             }
             Box(Modifier.size(52.dp)
-                .background(Color(0xFF323640), RoundedCornerShape(16.dp))
+                .background(Color(0xCC323640), CircleShape)
                 .clickable(enabled = !captureBusy && !recordingVideo) {
                     showSettings = false
                     showProPanel = false
