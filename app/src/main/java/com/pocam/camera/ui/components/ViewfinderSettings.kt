@@ -82,7 +82,7 @@ private fun SettingsSwitch(label: String, enabled: Boolean,
         horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = if (available) Color.White else Color.Gray, fontSize = 13.sp)
         Text(if (!available) "N/A" else if (enabled) "ON" else "OFF",
-            color = if (enabled && available) gold else Color.Gray,
+            color = if (enabled && available) accent else Color.Gray,
             fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
