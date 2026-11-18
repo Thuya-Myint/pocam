@@ -50,6 +50,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.pocam.camera.ui.components.modeSymbol
@@ -159,25 +164,41 @@ fun CameraScreen() {
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
 
+        // Original Pocam concept: minimal brand and a discreet performance capsule.
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-            .background(Color(0xC7111319)).padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(Color(0xA9121419))
+            .padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text("pocam.", color = Color.White, fontSize = 25.sp,
+                Text("pocam.", color = Color.White, fontSize = 24.sp,
                     fontWeight = FontWeight.Bold)
-                Text("POCKET CAMERA", color = Color(0xFFB0B5C0), fontSize = 9.sp,
+                Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
                     letterSpacing = 2.sp)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(mode.name, color = Color.White, fontSize = 11.sp,
-                    modifier = Modifier.background(Color(0xFF343942), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 9.dp, vertical = 7.dp))
-                Spacer(Modifier.width(6.dp))
+            PerformanceHud()
+        }
+        // Settings live in a vertical toolbar, not stacked over the branding.
+        AnimatedVisibility(!wheelOpen,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 10.dp),
+            enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
+            Column(Modifier.background(Color(0xA91B1E24), RoundedCornerShape(26.dp))
+                .padding(horizontal = 4.dp, vertical = 7.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { showSettings = !showSettings }) {
-                    Icon(Icons.Rounded.Tune, contentDescription = "Camera display settings",
+                    Icon(Icons.Rounded.Tune, contentDescription = "Viewfinder settings",
                         tint = Color.White)
                 }
+                if (mode == CameraMode.PRO) {
+                    IconButton(onClick = { showProPanel = !showProPanel }) {
+                        Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
+                            contentDescription = "Manual exposure controls", tint = Color.White)
+                    }
+                }
+                Text(if (gridEnabled) "▦" else "⊞", color = Color.White,
+                    fontSize = 24.sp, modifier = Modifier.clickable {
+                        gridEnabled = !gridEnabled
+                    }.padding(12.dp))
             }
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopEnd)
@@ -198,12 +219,20 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 260.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 174.dp),
             enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
-            ZoomRail(zoom, onSelect = { value ->
-                zoom = value
-                controller.setZoom(value)
-            })
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(mode.name, color = Color.White, fontSize = 11.sp,
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.background(Color(0xCB202329),
+                        RoundedCornerShape(24.dp))
+                        .padding(horizontal = 16.dp, vertical = 7.dp))
+                ZoomRail(zoom, onSelect = { value ->
+                    zoom = value
+                    controller.setZoom(value)
+                })
+            }
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
@@ -237,9 +266,11 @@ fun CameraScreen() {
             }
         }
 
+        // The 264dp gesture area is intentionally centered in an overlay.
+        // The gallery and flip buttons align with its central shutter, not its outer bounds.
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .background(Color(0xB9101218))
-            .padding(horizontal = 22.dp, vertical = 8.dp),
+            .background(Color(0xD817191F), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
@@ -255,9 +286,22 @@ fun CameraScreen() {
                 Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
                     tint = if (lastPhoto == null) Color.Gray else Color.White)
             }
-            Spacer(Modifier.width(100.dp))
+            Spacer(Modifier.width(112.dp))
+            IconButton(onClick = {
+                previewView?.let { view ->
+                    controller.flip(owner, view, { error = it }) {
+                        cameraGeneration++
+                        exposureRange = controller.exposureRange()
+                        exposureIndex = 0
+                    }
+                    zoom = 1f
+                }
+            }) {
+                Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
+                    tint = Color.White)
+            }
         }
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp),
+        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 0.dp),
             contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode,
                     onCapture = {
@@ -286,34 +330,6 @@ fun CameraScreen() {
                         controller.setExposure(0)
                     }, onWheelChange = { wheelOpen = it })
         }
-        /* Camera flip sits above the shutter gesture region. */
-        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 72.dp)) {
-            IconButton(onClick = {
-                previewView?.let { view ->
-                    controller.flip(owner, view, { error = it }) {
-                        cameraGeneration++
-                        exposureRange = controller.exposureRange()
-                        exposureIndex = 0
-                    }
-                    zoom = 1f
-                }
-            }) {
-                Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
-                    tint = Color.White)
-            }
-        }
-        if (mode == CameraMode.PRO) {
-            IconButton(onClick = { showProPanel = !showProPanel },
-                modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 178.dp)
-                    .background(Color(0xD923252B), CircleShape)) {
-                Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
-                    contentDescription = "Toggle Pro controls", tint = Color.White)
-            }
-        }
-        Text(if (wheelOpen) "DRAG TO CHOOSE MODE" else "HOLD SHUTTER · CHANGE MODE", color = Color(0xFFBFC2C9),
-            fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = 224.dp))
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xCC550000), RoundedCornerShape(12.dp))
