@@ -1,6 +1,28 @@
 package com.pocam.camera.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.matchParentSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.delay
+import com.pocam.camera.ui.components.CameraGrid
+import com.pocam.camera.ui.components.ZoomRail
+import com.pocam.camera.ui.components.CaptureFlash
+import com.pocam.camera.ui.components.FocusReticle
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -83,6 +105,12 @@ fun CameraScreen() {
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
     var showProPanel by remember { mutableStateOf(false) }
+    var gridEnabled by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var wheelOpen by remember { mutableStateOf(false) }
+    var captureFlash by remember { mutableStateOf(false) }
+    var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    var focusSequence by remember { mutableStateOf(0) }
     var lastPhoto by remember { mutableStateOf<Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -91,6 +119,18 @@ fun CameraScreen() {
     }
     LaunchedEffect(Unit) {
         if (!permitted) permissionRequest.launch(Manifest.permission.CAMERA)
+    }
+    LaunchedEffect(focusSequence) {
+        if (focusSequence > 0) {
+            delay(1100)
+            focusPoint = null
+        }
+    }
+    LaunchedEffect(captureFlash) {
+        if (captureFlash) {
+            delay(160)
+            captureFlash = false
+        }
     }
     DisposableEffect(controller) { onDispose { controller.release() } }
 
@@ -109,6 +149,9 @@ fun CameraScreen() {
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
                             controller.focusAt(this, event.x, event.y)
+                            focusPoint = Pair(event.x / width.coerceAtLeast(1),
+                                event.y / height.coerceAtLeast(1))
+                            focusSequence++
                             view.performClick()
                         }
                         true
@@ -116,40 +159,64 @@ fun CameraScreen() {
                 }
             }, modifier = Modifier.fillMaxSize())
         }
-        // Translucent top bar, independent of the live camera preview.
+        if (gridEnabled) {
+            CameraGrid(Modifier.fillMaxSize().padding(top = 80.dp, bottom = 200.dp))
+        }
+        focusPoint?.let { point ->
+            val density = LocalDensity.current
+            val x = with(density) { (maxWidth * point.first).toPx() }
+            val y = with(density) { (maxHeight * point.second).toPx() }
+            FocusReticle(point.first, point.second,
+                Modifier.offset { IntOffset(x.toInt() - with(density) { 32.dp.roundToPx() },
+                    y.toInt() - with(density) { 32.dp.roundToPx() }) })
+        }
+        CaptureFlash(captureFlash, Modifier.fillMaxSize())
+
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-            .background(Color(0x990E1015)).padding(horizontal = 18.dp, vertical = 16.dp),
+            .background(Color(0xC7111319)).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Text("pocam.", color = Color.White, fontSize = 25.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-                Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold)
+                Text("POCKET CAMERA", color = Color(0xFFB0B5C0), fontSize = 9.sp,
                     letterSpacing = 2.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(mode.name, color = Color.White, fontSize = 11.sp,
                     modifier = Modifier.background(Color(0xFF343942), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 12.dp, vertical = 7.dp))
-                Spacer(Modifier.width(8.dp))
-                PerformanceHud()
+                        .padding(horizontal = 9.dp, vertical = 7.dp))
+                Spacer(Modifier.width(6.dp))
+                IconButton(onClick = { showSettings = !showSettings }) {
+                    Icon(Icons.Rounded.Tune, contentDescription = "Camera display settings",
+                        tint = Color.White)
+                }
             }
         }
-
-        // Zoom controls stay above the shutter wheel and do not obstruct the preview.
-        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 216.dp)
-            .background(Color(0xB91A1C22), RoundedCornerShape(32.dp))
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf(1f, 2f, 4f).forEach { value ->
-                val active = zoom == value
-                Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.background(
-                        if (active) Color.White else Color.Transparent, CircleShape)
-                        .clickable { zoom = value; controller.setZoom(value) }
-                        .padding(horizontal = 14.dp, vertical = 9.dp))
+        AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopEnd)
+            .padding(top = 74.dp, end = 12.dp),
+            enter = fadeIn(tween(170)) + slideInVertically { -it / 3 },
+            exit = fadeOut(tween(130)) + slideOutVertically { -it / 3 }) {
+            Column(Modifier.background(Color(0xF121232A), RoundedCornerShape(16.dp))
+                .padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("VIEWFINDER", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(if (gridEnabled) "Grid  ·  ON" else "Grid  ·  OFF",
+                    color = Color.White, modifier = Modifier.clickable {
+                        gridEnabled = !gridEnabled
+                    }.padding(vertical = 8.dp))
+                Text("Performance overlay", color = Color.LightGray, fontSize = 11.sp)
+                PerformanceHud()
+                Text("Close", color = Color(0xFFFFD36A),
+                    modifier = Modifier.clickable { showSettings = false }.padding(6.dp))
             }
+        }
+        AnimatedVisibility(!wheelOpen && !showProPanel,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 210.dp),
+            enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
+            ZoomRail(zoom, onSelect = { value ->
+                zoom = value
+                controller.setZoom(value)
+            })
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
@@ -207,6 +274,7 @@ fun CameraScreen() {
                 ShutterButton(mode = mode,
                     onCapture = {
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
+                            captureFlash = true
                             controller.takePhoto(
                                 onSaved = { uri ->
                                     lastPhoto = uri
@@ -228,7 +296,7 @@ fun CameraScreen() {
                         exposureRange = controller.exposureRange()
                         exposureIndex = 0
                         controller.setExposure(0)
-                    })
+                    }, onWheelChange = { wheelOpen = it })
         }
         /* Camera flip sits above the shutter gesture region. */
         Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 28.dp)) {
@@ -255,7 +323,7 @@ fun CameraScreen() {
                     contentDescription = "Toggle Pro controls", tint = Color.White)
             }
         }
-        Text("Hold shutter to change mode", color = Color(0xFFBFC2C9),
+        Text(if (wheelOpen) "DRAG TO CHOOSE MODE" else "HOLD SHUTTER · CHANGE MODE", color = Color(0xFFBFC2C9),
             fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter)
                 .padding(bottom = 174.dp))
         error?.let {
