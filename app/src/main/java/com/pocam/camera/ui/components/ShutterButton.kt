@@ -21,15 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 @Composable
@@ -73,22 +69,19 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                 if (change == null || !change.pressed) {
                                     pressed = false
                                 } else {
-                                    // The wheel is rendered in the root overlay, above the
-                                    // dock. Track relative drag instead of using shutter-local
-                                    // coordinates as though they were wheel coordinates.
-                                    val center = Offset(size.width / 2f, size.height / 2f)
-                                    val dx = change.position.x - center.x
-                                    val dy = change.position.y - center.y
-                                    if (hypot(dx, dy) > 28.dp.toPx()) {
-                                        // The wheel is above the shutter. Upward motion is
-                                        // the primary direction; lateral drag picks adjacent modes.
-                                        val angle = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
-                                        val next = wheelModes[(angle / 60.0).roundToInt() % wheelModes.size]
-                                        if (next != hovered) {
-                                            hovered = next
-                                            onHoverMode(next)
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        }
+                                    val dx = change.position.x - size.width / 2f
+                                    val threshold = 22.dp.toPx()
+                                    // Horizontal movement steps through the six options.
+                                    // Returning to the center restores the original mode.
+                                    val step = if (kotlin.math.abs(dx) < threshold) 0 else
+                                        (dx / 48.dp.toPx()).roundToInt().coerceIn(-3, 3)
+                                    val origin = wheelModes.indexOf(mode).coerceAtLeast(0)
+                                    val next = wheelModes[
+                                        (origin + step + wheelModes.size) % wheelModes.size]
+                                    if (next != hovered) {
+                                        hovered = next
+                                        onHoverMode(next)
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     }
                                 }
                             }
