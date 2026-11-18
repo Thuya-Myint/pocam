@@ -494,20 +494,23 @@ fun CameraScreen() {
             }
         }
         countdown?.let { remaining ->
-            Box(Modifier.align(Alignment.Center)
-                .background(Color(0xBB111319), CircleShape).size(110.dp),
-                contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.align(Alignment.Center)
+                    .size(136.dp)
+                    .background(Color(0xDD111319), CircleShape)
+                    .clickable {
+                        countdownJob?.cancel()
+                        countdownJob = null
+                        countdown = null
+                        captureBusy = false
+                    },
+                contentAlignment = Alignment.Center
+            ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$remaining", color = Color.White, fontSize = 52.sp,
+                    Text("$remaining", color = Color.White, fontSize = 58.sp,
                         fontWeight = FontWeight.Bold)
-                    Text("CANCEL", color = Color.White, fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            countdownJob?.cancel()
-                            countdownJob = null
-                            countdown = null
-                            captureBusy = false
-                        }.padding(horizontal = 10.dp, vertical = 5.dp))
+                    Text("TAP TO CANCEL", color = Color.White, fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold)
                 }
             }
         }
