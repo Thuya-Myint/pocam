@@ -7,8 +7,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import com.pocam.camera.ui.components.modeSymbol
@@ -24,12 +28,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
 import com.pocam.camera.ui.components.ShutterButton
+import com.pocam.camera.ui.components.PerformanceHud
 
 @Composable
 fun CameraScreen() {
@@ -41,6 +48,8 @@ fun CameraScreen() {
             PackageManager.PERMISSION_GRANTED)
     }
     var mode by remember { mutableStateOf(CameraMode.PHOTO) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    var zoom by remember { mutableStateOf(1f) }
     var error by remember { mutableStateOf<String?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permitted = it
@@ -54,15 +63,31 @@ fun CameraScreen() {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (permitted) {
             AndroidView(factory = { ctx ->
-                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER; previewView = this }
             }, modifier = Modifier.fillMaxSize(), update = { view ->
                 controller.bind(owner, view) { error = it }
             })
         }
         Text("pocam.", color = Color.White,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
+        PerformanceHud(Modifier.align(Alignment.TopEnd).padding(20.dp))
         Text(modeSymbol(mode), color = Color.White,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 34.dp))
+        Row(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 110.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(1f, 2f, 4f).forEach { value ->
+                Text("${value.toInt()}×", color = Color.White,
+                    modifier = Modifier.background(
+                        if (zoom == value) Color(0xFF66676B) else Color(0xCC25262A),
+                        CircleShape).clickable { zoom = value; controller.setZoom(value) }
+                        .padding(horizontal = 12.dp, vertical = 9.dp))
+            }
+        }
+        Text("⟳", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
+            .padding(end = 22.dp, bottom = 124.dp)
+            .background(Color(0xCC25262A), CircleShape)
+            .clickable { previewView?.let { controller.flip(owner, it) { message -> error = message }; zoom = 1f } }
+            .padding(14.dp))
         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
             ShutterButton(mode = mode,
                 onCapture = {
