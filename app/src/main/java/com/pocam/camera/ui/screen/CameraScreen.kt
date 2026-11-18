@@ -61,6 +61,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.defaultMinSize
@@ -229,7 +230,7 @@ fun CameraScreen() {
 
         // Minimal floating header: no opaque bar, no second toolbar.
         Row(Modifier.align(Alignment.TopCenter).zIndex(12f).fillMaxWidth()
-            .padding(start = 18.dp, end = 18.dp, top = 16.dp),
+            .statusBarsPadding().padding(start = 18.dp, end = 18.dp, top = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Column {
@@ -274,14 +275,14 @@ fun CameraScreen() {
             }
         }
         if (!wheelOpen) {
-            Box(Modifier.align(Alignment.TopCenter).padding(top = 78.dp)
+            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 86.dp)
                 .background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             if (mode == CameraMode.PRO) {
-                Box(Modifier.align(Alignment.TopEnd).padding(top = 80.dp, end = 18.dp)
+                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 88.dp, end = 18.dp)
                     .background(Color(0x88303842), CircleShape)) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
@@ -292,7 +293,7 @@ fun CameraScreen() {
         }
         if (showSettings && !wheelOpen) {
             Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
-                .padding(top = 124.dp, start = 12.dp, end = 12.dp)
+                .statusBarsPadding().padding(top = 132.dp, start = 12.dp, end = 12.dp)
                 .heightIn(max = (availableHeight - 310.dp).coerceAtLeast(180.dp))
                 .verticalScroll(rememberScrollState())) {
             ViewfinderSettings(

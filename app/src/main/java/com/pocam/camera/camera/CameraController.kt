@@ -28,6 +28,8 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.MeteringPointFactory
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -144,7 +146,11 @@ class CameraController(private val context: Context) {
 
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
-        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY).build()
+        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+        .setResolutionSelector(ResolutionSelector.Builder()
+            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+            .build())
+        .build()
 
     fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
              onReady: () -> Unit = {}, mode: CameraMode = activeMode) {
