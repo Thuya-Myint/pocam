@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -42,6 +45,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
 
 @Composable
+private fun cameraAccent(): Color {
+    val context = LocalContext.current
+    return remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
+        else Color(0xFFFFD88C)
+    }
+}
+
+@Composable
 fun CameraGrid(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val stroke = 1.dp.toPx()
@@ -57,15 +69,17 @@ fun CameraGrid(modifier: Modifier = Modifier) {
 
 @Composable
 fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifier) {
+    val accent = cameraAccent()
     Box(modifier, contentAlignment = Alignment.Center) {
-        Box(Modifier.size(64.dp).border(1.5.dp, Color(0xFFFFD36A),
+        Box(Modifier.size(64.dp).border(1.5.dp, accent,
             RoundedCornerShape(12.dp)))
-        Box(Modifier.size(4.dp).background(Color(0xFFFFD36A), CircleShape))
+        Box(Modifier.size(4.dp).background(accent, CircleShape))
     }
 }
 
 @Composable
 fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Modifier) {
+    val accent = cameraAccent()
     var dragAccumulated by remember { mutableFloatStateOf(0f) }
     val currentSelected by rememberUpdatedState(selected)
     val currentOnSelect by rememberUpdatedState(onSelect)
@@ -80,7 +94,7 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
             val scale by animateFloatAsState(if (active) 1.04f else 1f,
                 tween(180, easing = FastOutSlowInEasing), label = "zoom pill")
             Box(Modifier.size(38.dp).scale(scale)
-                .background(if (active) Color(0xFFFFD88C) else Color.Transparent, CircleShape)
+                .background(if (active) accent else Color.Transparent, CircleShape)
                 .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
                 Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
                     fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
