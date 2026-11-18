@@ -1,10 +1,5 @@
 package com.pocam.camera.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
@@ -17,7 +12,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -79,14 +73,17 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                 if (change == null || !change.pressed) {
                                     pressed = false
                                 } else {
-                                    // Pointer coordinates are relative to the 88dp shutter,
-                                    // even when the wheel expands around the outer 264dp box.
+                                    // The wheel is rendered in the root overlay, above the
+                                    // dock. Track relative drag instead of using shutter-local
+                                    // coordinates as though they were wheel coordinates.
                                     val center = Offset(size.width / 2f, size.height / 2f)
                                     val dx = change.position.x - center.x
-                                    val dy = change.position.y - center.y + 190.dp.toPx()
-                                    if (hypot(dx, change.position.y - center.y) > 35.dp.toPx()) {
-                                        val degrees = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
-                                        val next = wheelModes[(degrees / 60.0).roundToInt() % 6]
+                                    val dy = change.position.y - center.y
+                                    if (hypot(dx, dy) > 28.dp.toPx()) {
+                                        // The wheel is above the shutter. Upward motion is
+                                        // the primary direction; lateral drag picks adjacent modes.
+                                        val angle = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
+                                        val next = wheelModes[(angle / 60.0).roundToInt() % wheelModes.size]
                                         if (next != hovered) {
                                             hovered = next
                                             onHoverMode(next)
