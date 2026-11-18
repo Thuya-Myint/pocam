@@ -57,7 +57,7 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
             val x = (88.0 * cos(angle)).toFloat().dp
             val y = (88.0 * sin(angle)).toFloat().dp
             val active = selected == mode
-            val visibility = ((-sin(angle) + 0.05) / 0.8).coerceIn(0.0, 1.0).toFloat()
+            val visibility = (1.0 - 0.35 * ((sin(angle) + 0.15) / 1.15).coerceIn(0.0, 1.0)).toFloat()
             Box(Modifier.offset(x = x, y = y).size(52.dp).alpha(visibility)
                 .background(if (active) accent else Color(0xFF343944), CircleShape)
                 .border(1.dp, if (active) accent else Color.White.copy(alpha = .18f), CircleShape),
