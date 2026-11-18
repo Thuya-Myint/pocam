@@ -29,8 +29,9 @@ import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
-fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = false, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
+fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = false, onCapture: () -> Unit, onSound: () -> Unit = {}, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
     val haptics = LocalHapticFeedback.current
+    val soundNow by androidx.compose.runtime.rememberUpdatedState(onSound)
     val busyNow by androidx.compose.runtime.rememberUpdatedState(busy)
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
@@ -63,6 +64,9 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                         if (releasedBeforeHold == true) {
                             pressing = false
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            soundNow()
+                            onCapture()
+                        } else if (recording) {
                             onCapture()
                         } else {
                             expanded = true
@@ -92,6 +96,7 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                                         wheelModes[sector]
                                     }
                                     if (next != hovered) {
+                                        soundNow()
                                         hovered = next
                                         onHoverMode(next)
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -101,7 +106,7 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                             expanded = false
                             pressing = false
                             onWheelChange(false)
-                            onModeSelected(hovered)
+                            if (hovered != mode) onModeSelected(hovered)
                         }
                         } finally {
                             pressing = false

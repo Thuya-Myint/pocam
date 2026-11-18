@@ -54,6 +54,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.dynamicDarkColorScheme
 import android.os.Build
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
@@ -108,6 +110,15 @@ fun CameraScreen() {
         } else Color(0xFFFFD88C)
     }
     val owner = LocalLifecycleOwner.current
+    val tones = remember { ToneGenerator(AudioManager.STREAM_SYSTEM, 22) }
+    var lastSoundAt by remember { mutableStateOf(0L) }
+    fun playUiTone() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastSoundAt >= 55L) {
+            lastSoundAt = now
+            tones.startTone(ToneGenerator.TONE_PROP_BEEP, 24)
+        }
+    }
     val controller = remember(context) { CameraController(context) }
     var permitted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -119,6 +130,7 @@ fun CameraScreen() {
     var exposureIndex by remember { mutableStateOf(0) }
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
+    var maxZoom by remember { mutableStateOf(4f) }
     var showProPanel by remember { mutableStateOf(false) }
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
@@ -158,7 +170,7 @@ fun CameraScreen() {
             captureFlash = false
         }
     }
-    DisposableEffect(controller) { onDispose { controller.release() } }
+    DisposableEffect(controller, tones) { onDispose { controller.release(); tones.release() } }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()) {
         val availableHeight = maxHeight
@@ -172,6 +184,7 @@ fun CameraScreen() {
                     controller.bind(owner, this, { error = it }, onReady = {
                         cameraGeneration++
                         exposureRange = controller.exposureRange()
+                        maxZoom = controller.maxZoom()
                     })
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
@@ -324,10 +337,10 @@ fun CameraScreen() {
                 .padding(bottom = 144.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ZoomRail(zoom, onSelect = { value ->
+                ZoomRail(zoom, maxZoom = maxZoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
-                })
+                }, onTick = { playUiTone() })
                 if (mode == CameraMode.MORE) {
                     Text("More modes coming soon",
                         fontSize = 10.sp, color = Color.White,
@@ -399,6 +412,7 @@ fun CameraScreen() {
             }
             Box(contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
+                    onSound = { playUiTone() },
                     onCapture = {
                         if (captureBusy || recordingVideo) return@ShutterButton
                         if (mode == CameraMode.VIDEO) {
@@ -453,6 +467,7 @@ fun CameraScreen() {
                             controller.bind(owner, view, { error = it }, {
                                 cameraGeneration++
                                 exposureRange = controller.exposureRange()
+                                maxZoom = controller.maxZoom()
                             }, it)
                         }
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
@@ -474,6 +489,7 @@ fun CameraScreen() {
                             cameraGeneration++
                             exposureRange = controller.exposureRange()
                             exposureIndex = 0
+                            maxZoom = controller.maxZoom()
                         }
                         zoom = 1f
                         torchEnabled = false

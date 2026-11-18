@@ -10,7 +10,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,51 +79,83 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 }
 
 @Composable
-fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Modifier) {
+fun ZoomRail(
+    selected: Float, maxZoom: Float, onSelect: (Float) -> Unit,
+    onTick: () -> Unit = {}, modifier: Modifier = Modifier
+) {
     val accent = cameraAccent()
-    var dragAccumulated by remember { mutableFloatStateOf(0f) }
-    val currentSelected by rememberUpdatedState(selected)
-    val currentOnSelect by rememberUpdatedState(onSelect)
+    val safeMax = maxZoom.coerceAtLeast(1f)
+    val latestSelect by rememberUpdatedState(onSelect)
+    val latestTick by rememberUpdatedState(onTick)
+    val latestMax by rememberUpdatedState(safeMax)
+    var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    val fraction = ((selected - 1f) / (safeMax - 1f).coerceAtLeast(.001f)).coerceIn(0f, 1f)
+    val animated by animateFloatAsState(fraction, tween(90), label = "continuous zoom")
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Row(Modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
-        .padding(horizontal = 5.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        listOf(1f, 2f, 4f).forEach { value ->
-            val active = value == selected
-            val scale by animateFloatAsState(if (active) 1.04f else 1f,
-                tween(180, easing = FastOutSlowInEasing), label = "zoom pill")
-            Box(Modifier.size(38.dp).scale(scale)
-                .background(if (active) accent else Color.Transparent, CircleShape)
-                .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
-                Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
-                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            listOf(1f, 2f, 4f).filter { it <= safeMax + .01f }.forEach { value ->
+                val active = kotlin.math.abs(selected - value) < .12f
+                Box(Modifier.size(40.dp)
+                    .background(if (active) accent else Color.Transparent, CircleShape)
+                    .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
+                    Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
+                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Text(String.format(java.util.Locale.US, "%.1f×", selected),
+                color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 7.dp))
+        }
+        Box(Modifier.width(260.dp).height(52.dp)
+            .background(Color(0xE91B1F28), RoundedCornerShape(26.dp))
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    fun update(x: Float) {
+                        val normalized = ((x - 22.dp.toPx()) /
+                            (size.width - 44.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                        val next = 1f + normalized * (latestMax - 1f)
+                        val tick = (normalized * 24).toInt()
+                        if (tick != lastTick) {
+                            lastTick = tick
+                            latestTick()
+                        }
+                        latestSelect(next)
+                    }
+                    update(down.position.x)
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change != null && change.pressed) {
+                            update(change.position.x)
+                            change.consume()
+                        }
+                    } while (event.changes.any { it.id == down.id && it.pressed })
+                }
+            }, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 22.dp)) {
+                val center = size.height / 2f
+                drawLine(Color.White.copy(alpha = .28f),
+                    Offset(0f, center), Offset(size.width, center), 3.dp.toPx())
+                drawLine(accent, Offset(0f, center),
+                    Offset(size.width * animated, center), 3.dp.toPx())
+                for (i in 0..24) {
+                    val x = size.width * i / 24f
+                    drawLine(Color.White.copy(alpha = if (i / 24f <= animated) .85f else .28f),
+                        Offset(x, center - if (i % 4 == 0) 8.dp.toPx() else 4.dp.toPx()),
+                        Offset(x, center + if (i % 4 == 0) 8.dp.toPx() else 4.dp.toPx()),
+                        1.dp.toPx())
+                }
+                drawCircle(accent, 9.dp.toPx(),
+                    Offset(size.width * animated, center))
+                drawCircle(Color.White, 3.dp.toPx(),
+                    Offset(size.width * animated, center))
             }
         }
-    }
-    Row(Modifier.width(176.dp).height(44.dp)
-        .background(Color(0x991B1F28), RoundedCornerShape(22.dp))
-        .pointerInput(Unit) {
-            detectHorizontalDragGestures(
-                onDragStart = { dragAccumulated = 0f },
-                onDragEnd = { dragAccumulated = 0f },
-                onHorizontalDrag = { change, amount ->
-                    change.consume()
-                    dragAccumulated += amount
-                    if (kotlin.math.abs(dragAccumulated) > 28.dp.toPx()) {
-                        val values = listOf(1f, 2f, 4f)
-                        val current = values.indexOf(currentSelected).coerceAtLeast(0)
-                        val direction = if (dragAccumulated > 0f) 1 else -1
-                        currentOnSelect(values[(current + direction).coerceIn(0, values.lastIndex)])
-                        dragAccumulated = 0f
-                    }
-                })
-        }, horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically) {
-        Text("←  SWIPE TO ZOOM  →", color = Color.White.copy(alpha = .9f),
-            fontSize = 10.sp, letterSpacing = .5.sp)
-    }
     }
 }
 

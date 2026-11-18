@@ -257,6 +257,8 @@ class CameraController(private val context: Context) {
         bind(owner, view, onError, onReady, activeMode)
     }
 
+    fun maxZoom(): Float = camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: 4f
+
     fun setZoom(ratio: Float) {
         val state = camera?.cameraInfo?.zoomState?.value
         val clamped = if (state == null) ratio.coerceAtLeast(1f)
