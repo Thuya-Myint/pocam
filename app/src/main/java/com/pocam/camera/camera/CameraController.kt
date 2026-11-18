@@ -2,6 +2,9 @@ package com.pocam.camera.camera
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.content.ContentValues
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import androidx.camera.camera2.interop.Camera2CameraControl
@@ -26,6 +29,7 @@ import java.util.concurrent.TimeUnit
 
 class CameraController(private val context: Context) {
     private var provider: ProcessCameraProvider? = null
+    private var onCameraReady: (() -> Unit)? = null
     private var camera: Camera? = null
     private var front = false
     private var manualIso: Int? = null
@@ -106,6 +110,7 @@ class CameraController(private val context: Context) {
         if (whiteBalanceMode in caps.supportedAwbModes) {
             builder.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, whiteBalanceMode)
         }
+        Camera2CameraControl.from(activeCamera.cameraControl).clearCaptureRequestOptions()
         Camera2CameraControl.from(activeCamera.cameraControl).setCaptureRequestOptions(builder.build())
     }
 
@@ -113,7 +118,8 @@ class CameraController(private val context: Context) {
     private val capture = ImageCapture.Builder()
         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
 
-    fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit) {
+    fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
+        onCameraReady = onReady
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
             try {
@@ -125,17 +131,21 @@ class CameraController(private val context: Context) {
                 provider = cameraProvider
                 setZoom(zoom)
                 applyManual()
+                onCameraReady?.invoke()
             } catch (e: Exception) {
                 onError(e.message ?: "Unable to start camera")
             }
         }, ContextCompat.getMainExecutor(context))
     }
 
-    fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit) {
+    fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
         front = !front
         zoom = 1f
-        resetManual()
-        bind(owner, view, onError)
+        manualIso = null
+        manualExposureNs = null
+        manualFocusDiopters = null
+        whiteBalanceMode = CaptureRequest.CONTROL_AWB_MODE_AUTO
+        bind(owner, view, onError, onReady)
     }
 
     fun setZoom(ratio: Float) {
@@ -167,17 +177,30 @@ class CameraController(private val context: Context) {
     }
 
     fun takePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
-        val dir = context.getExternalFilesDir("Pictures") ?: context.filesDir
-        if (!dir.exists()) dir.mkdirs()
-        val file = File(dir, "POCAM_" +
-            SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date()) + ".jpg")
-        val output = ImageCapture.OutputFileOptions.Builder(file).build()
+        val name = "POCAM_" +
+            SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date()) + ".jpg"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/Pocam")
+            }
+        }
+        val uri = context.contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        if (uri == null) {
+            onError("Could not create photo in gallery")
+            return
+        }
+        val output = ImageCapture.OutputFileOptions.Builder(
+            context.contentResolver, uri, values).build()
         capture.takePicture(output, ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                    onSaved(result.savedUri ?: Uri.fromFile(file))
+                    onSaved(result.savedUri ?: uri)
                 }
                 override fun onError(exception: ImageCaptureException) {
+                    context.contentResolver.delete(uri, null, null)
                     onError(exception.message ?: "Photo capture failed")
                 }
             })
