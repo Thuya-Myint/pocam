@@ -30,6 +30,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.FocusMeteringAction
+import android.util.Log
 import androidx.camera.core.MeteringPointFactory
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -93,6 +94,7 @@ class CameraController(private val context: Context) {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var recordingActive = false
+    private var bindGeneration = 0
     fun isRecording(): Boolean = recordingActive
     // Diagnostics remain available to developers, not shown in the viewfinder.
     fun cameraDiagnostics(): String {
@@ -204,10 +206,12 @@ class CameraController(private val context: Context) {
     fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
              onReady: () -> Unit = {}, mode: CameraMode = activeMode) {
         activeMode = mode
+        val generation = ++bindGeneration
         onCameraReady = onReady
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
             try {
+                if (generation != bindGeneration) return@addListener
                 val cameraProvider = future.get()
                 val baseSelector = if (front) CameraSelector.DEFAULT_FRONT_CAMERA
                     else CameraSelector.DEFAULT_BACK_CAMERA
@@ -227,6 +231,7 @@ class CameraController(private val context: Context) {
                 val extensionFuture = ExtensionsManager.getInstanceAsync(context, cameraProvider)
                 extensionFuture.addListener({
                     try {
+                        if (generation != bindGeneration) return@addListener
                         val extensions = extensionFuture.get()
                         val selectedExtension = if (mode == CameraMode.NIGHT ||
                             mode == CameraMode.PORTRAIT || mode == CameraMode.PHOTO) extensionMode
@@ -245,7 +250,8 @@ class CameraController(private val context: Context) {
                         if (mode == CameraMode.VIDEO) {
                             val recorder = Recorder.Builder()
                                 .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD))).build()
-                            val video = VideoCapture.withOutput(recorder)
+                            val video = VideoCapture.Builder(recorder)
+                                .setVideoStabilizationEnabled(true).build()
                             camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
                             videoCapture = video
                         } else {
@@ -258,10 +264,12 @@ class CameraController(private val context: Context) {
                         if (mode == CameraMode.PRO) applyManual()
                         onCameraReady?.invoke()
                     } catch (e: Exception) {
+                        Log.e("PocamCamera", "Camera binding failed", e)
                         onError(e.message ?: "Unable to configure camera")
                     }
                 }, ContextCompat.getMainExecutor(context))
             } catch (e: Exception) {
+                Log.e("PocamCamera", "Camera startup failed", e)
                 onError(e.message ?: "Unable to start camera")
             }
         }, ContextCompat.getMainExecutor(context))
@@ -345,6 +353,7 @@ class CameraController(private val context: Context) {
     }
 
     fun focusAt(view: PreviewView, x: Float, y: Float) {
+        if (activeMode == CameraMode.PRO && manualFocusDiopters != null) return
         val point = view.meteringPointFactory.createPoint(x, y)
         val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
             .setAutoCancelDuration(3, TimeUnit.SECONDS).build()
@@ -354,6 +363,11 @@ class CameraController(private val context: Context) {
     // Request a center autofocus pass before capture, but do not block shooting
     // if the device reports unsupported AF or the focus future fails.
     fun focusThenTakePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
+        // Pro manual focus must not be overridden by a temporary AF request.
+        if (activeMode == CameraMode.PRO && manualFocusDiopters != null) {
+            takePhoto(onSaved, onError)
+            return
+        }
         val activeCamera = camera
         if (activeCamera == null) {
             onError("Camera is not ready")
@@ -426,6 +440,7 @@ class CameraController(private val context: Context) {
     }
 
     fun release() {
+        bindGeneration++
         recording?.stop()
         recording = null
         recordingActive = false

@@ -156,7 +156,15 @@ fun CameraScreen() {
     var captureFlash by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     var focusSequence by remember { mutableStateOf(0) }
-    var lastPhoto by remember { mutableStateOf<Uri?>(null) }
+    var lastPhoto by remember {
+        mutableStateOf(context.getSharedPreferences("pocam", 0)
+            .getString("last_media_uri", null)?.let(Uri::parse))
+    }
+    fun rememberMedia(uri: Uri) {
+        lastPhoto = uri
+        context.getSharedPreferences("pocam", 0).edit()
+            .putString("last_media_uri", uri.toString()).apply()
+    }
     var error by remember { mutableStateOf<String?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permitted = it
@@ -461,7 +469,7 @@ fun CameraScreen() {
                         if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.VIDEO) {
                             controller.toggleVideo(
-                                onSaved = { uri -> lastPhoto = uri },
+                                onSaved = { uri -> rememberMedia(uri) },
                                 onError = { error = it },
                                 onState = { recordingVideo = it })
                         } else if (mode != CameraMode.MORE) {
@@ -479,7 +487,7 @@ fun CameraScreen() {
                                 onSaved = { uri ->
                                     captureFlash = true
                                     captureBusy = false
-                                    lastPhoto = uri
+                                    rememberMedia(uri)
                                     Toast.makeText(context, "Saved to Pocam photos",
                                         Toast.LENGTH_SHORT).show()
                                 },

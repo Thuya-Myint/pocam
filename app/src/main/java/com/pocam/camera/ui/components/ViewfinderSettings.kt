@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -56,16 +62,19 @@ fun ViewfinderSettings(
         SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
         Text("CAPTURE TIMER", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             listOf(0, 3, 5, 10).forEach { seconds ->
-                Text(if (seconds == 0) "OFF" else "${seconds}s",
-                    color = if (timer == seconds) Color.Black else Color.White,
-                    fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
-                    modifier = Modifier.background(
-                        if (timer == seconds) accent else Color(0xFF383C46),
-                        RoundedCornerShape(12.dp))
-                        .clickable { onTimer(seconds) }
-                        .padding(horizontal = 15.dp, vertical = 10.dp))
+                val selected = timer == seconds
+                Box(Modifier.size(56.dp)
+                    .background(if (selected) accent else Color(0xFF383C46), CircleShape)
+                    .clickable { onTimer(seconds) }
+                    .semantics { contentDescription = if (seconds == 0)
+                        "Timer off" else "Timer $seconds seconds" },
+                    contentAlignment = Alignment.Center) {
+                    Text(if (seconds == 0) "OFF" else "${seconds}s",
+                        color = if (selected) Color.Black else Color.White,
+                        fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                }
             }
         }
     }
