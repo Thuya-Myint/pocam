@@ -156,6 +156,7 @@ fun CameraScreen() {
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
                     controller.bind(owner, this, { error = it }) {
@@ -212,6 +213,54 @@ fun CameraScreen() {
                     color = Color(0xFFFFD88C), fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 if (performanceEnabled) PerformanceHud()
+            }
+        }
+        // Persistent quick actions must render above the camera TextureView.
+        AnimatedVisibility(!wheelOpen,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 92.dp),
+            enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+            Row(Modifier.background(Color(0xE822252D), RoundedCornerShape(28.dp))
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    gridEnabled = !gridEnabled
+                    preferences.edit().putBoolean("grid", gridEnabled).apply()
+                }) {
+                    Icon(Icons.Rounded.GridOn, contentDescription = "Grid",
+                        tint = if (gridEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    if (controller.hasTorch()) {
+                        torchEnabled = !torchEnabled
+                        controller.setTorch(torchEnabled)
+                    }
+                }) {
+                    Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                        contentDescription = "Torch",
+                        tint = if (torchEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    timerSeconds = when (timerSeconds) {
+                        0 -> 3
+                        3 -> 5
+                        5 -> 10
+                        else -> 0
+                    }
+                    preferences.edit().putInt("timer", timerSeconds).apply()
+                }) {
+                    Text(if (timerSeconds == 0) "OFF" else "${timerSeconds}s",
+                        color = if (timerSeconds == 0) Color.White else Color(0xFFFFD88C),
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                IconButton(onClick = { showSettings = !showSettings }) {
+                    Icon(Icons.Rounded.Tune, contentDescription = "Settings", tint = Color.White)
+                }
+                if (mode == CameraMode.PRO) {
+                    IconButton(onClick = { showProPanel = !showProPanel }) {
+                        Text("PRO", color = Color(0xFFFFD88C), fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
