@@ -49,6 +49,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.pocam.camera.ui.components.modeSymbol
@@ -120,9 +121,9 @@ fun CameraScreen() {
     }
     DisposableEffect(controller) { onDispose { controller.release() } }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()) {
         val availableHeight = maxHeight
-        val proMaxHeight = (availableHeight - 190.dp).coerceAtLeast(160.dp)
+        val proMaxHeight = (availableHeight - 250.dp).coerceAtLeast(120.dp)
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -197,7 +198,7 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 210.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 260.dp),
             enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
             ZoomRail(zoom, onSelect = { value ->
                 zoom = value
@@ -206,11 +207,12 @@ fun CameraScreen() {
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 72.dp, bottom = 110.dp),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 82.dp, bottom = 168.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
-            Column(Modifier.heightIn(max = proMaxHeight).verticalScroll(rememberScrollState())
+            Column(Modifier.heightIn(max = proMaxHeight)
                 .background(Color(0xEB17191E), RoundedCornerShape(18.dp))
+                .verticalScroll(rememberScrollState())
                 .padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("PRO", color = Color.White, fontWeight = FontWeight.Bold)
@@ -255,7 +257,7 @@ fun CameraScreen() {
             }
             Spacer(Modifier.width(100.dp))
         }
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 0.dp),
+        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp),
             contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode,
                     onCapture = {
@@ -285,7 +287,7 @@ fun CameraScreen() {
                     }, onWheelChange = { wheelOpen = it })
         }
         /* Camera flip sits above the shutter gesture region. */
-        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 28.dp)) {
+        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 72.dp)) {
             IconButton(onClick = {
                 previewView?.let { view ->
                     controller.flip(owner, view, { error = it }) {
@@ -303,7 +305,7 @@ fun CameraScreen() {
         if (mode == CameraMode.PRO) {
             IconButton(onClick = { showProPanel = !showProPanel },
                 modifier = Modifier.align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 132.dp)
+                    .padding(end = 16.dp, bottom = 178.dp)
                     .background(Color(0xD923252B), CircleShape)) {
                 Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
                     contentDescription = "Toggle Pro controls", tint = Color.White)
@@ -311,7 +313,7 @@ fun CameraScreen() {
         }
         Text(if (wheelOpen) "DRAG TO CHOOSE MODE" else "HOLD SHUTTER · CHANGE MODE", color = Color(0xFFBFC2C9),
             fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = 174.dp))
+                .padding(bottom = 224.dp))
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xCC550000), RoundedCornerShape(12.dp))
