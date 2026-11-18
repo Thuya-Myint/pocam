@@ -2,20 +2,17 @@ package com.pocam.camera.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,41 +20,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pocam.camera.domain.model.CameraMode
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val wheelModes = listOf(CameraMode.PHOTO, CameraMode.VIDEO, CameraMode.PORTRAIT,
     CameraMode.NIGHT, CameraMode.MORE, CameraMode.PRO)
 
 @Composable
 fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
-    val entrance = animateFloatAsState(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow), label = "wheel entrance")
-    Box(modifier.scale(entrance.value).size(248.dp)
-        .shadow(18.dp, CircleShape)
-        .background(Brush.radialGradient(listOf(Color(0xF12C303A), Color(0xF813151A))), CircleShape)
-        .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape),
-        contentAlignment = Alignment.Center) {
-        wheelModes.forEachIndexed { index, mode ->
-            val angle = (index * 60.0 - 90.0) * PI / 180.0
-            val active = mode == selected
-            val selectedScale = animateFloatAsState(if (active) 1.18f else 1f, spring(dampingRatio = Spring.DampingRatioLowBouncy), label = "mode highlight")
-            Box(
-                Modifier.offset(x = (91 * cos(angle)).dp, y = (91 * sin(angle)).dp)
-                    .scale(selectedScale.value)
-                    .size(49.dp)
-                    .background(if (active) Color.White else Color(0xFF343945), CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.widthIn(max = 340.dp)
+        .background(Color(0xF21B1E26), RoundedCornerShape(24.dp))
+        .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(24.dp))
+        .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("SLIDE TO CHOOSE MODE", color = Color(0xFFFFD88C),
+            fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            wheelModes.forEach { mode ->
+                val active = mode == selected
+                val emphasis by animateFloatAsState(if (active) 1f else .75f,
+                    spring(), label = "mode emphasis")
+                Column(Modifier.background(
+                    if (active) Color(0xFFFFD88C) else Color(0xFF303540),
+                    RoundedCornerShape(12.dp))
+                    .padding(horizontal = 7.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(modeSymbol(mode), color = if (active) Color.Black else Color.White,
-                        fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                        fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(mode.name.take(5), color = if (active) Color.Black else Color.White,
-                        fontSize = 7.sp)
+                        fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
+        Text("RELEASE TO SELECT  ·  HOLD TO KEEP", color = Color(0xFFB6BAC5),
+            fontSize = 9.sp)
     }
 }
 
