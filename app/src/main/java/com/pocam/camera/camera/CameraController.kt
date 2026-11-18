@@ -6,6 +6,8 @@ import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.MeteringPointFactory
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -15,6 +17,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class CameraController(private val context: Context) {
     private var provider: ProcessCameraProvider? = null
@@ -53,6 +56,26 @@ class CameraController(private val context: Context) {
             else ratio.coerceIn(state.minZoomRatio, state.maxZoomRatio)
         zoom = clamped
         camera?.cameraControl?.setZoomRatio(clamped)
+    }
+
+    fun exposureRange(): IntRange {
+        val range = camera?.cameraInfo?.exposureState?.exposureCompensationRange
+        return if (range == null) 0..0 else range.lower..range.upper
+    }
+
+    fun exposureStepEv(): Float =
+        camera?.cameraInfo?.exposureState?.exposureCompensationStep?.toFloat() ?: 0f
+
+    fun setExposure(index: Int) {
+        val range = exposureRange()
+        camera?.cameraControl?.setExposureCompensationIndex(index.coerceIn(range.first, range.last))
+    }
+
+    fun focusAt(view: PreviewView, x: Float, y: Float) {
+        val point = view.meteringPointFactory.createPoint(x, y)
+        val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+            .setAutoCancelDuration(3, TimeUnit.SECONDS).build()
+        camera?.cameraControl?.startFocusAndMetering(action)
     }
 
     fun takePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
