@@ -219,9 +219,8 @@ fun CameraScreen() {
             }
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
-        AnimatedVisibility(!wheelOpen,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 98.dp).zIndex(12f),
-            enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
+        if (!wheelOpen) {
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 98.dp).zIndex(12f)) {
             Row(Modifier.shadow(12.dp, RoundedCornerShape(26.dp))
                 .background(Color(0xE91B1E24), RoundedCornerShape(26.dp))
                 .padding(horizontal = 6.dp, vertical = 3.dp),
@@ -266,12 +265,12 @@ fun CameraScreen() {
                     }
                 }
             }
+            }
         }
-        AnimatedVisibility(wheelOpen,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 244.dp).zIndex(20f),
-            enter = fadeIn(tween(140)) + scaleIn(initialScale = 0.78f),
-            exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.78f)) {
-            RadialModeWheel(wheelHover)
+        if (wheelOpen) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 244.dp).zIndex(20f)) {
+                RadialModeWheel(wheelHover)
+            }
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter).zIndex(15f)
             .padding(top = 164.dp, start = 12.dp, end = 12.dp),
@@ -302,11 +301,9 @@ fun CameraScreen() {
             )
         }
         // Shooting controls are always reachable and drawn above the preview.
-        AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 144.dp, start = 8.dp, end = 8.dp),
-            enter = fadeIn(tween(180)) + slideInVertically { it / 5 },
-            exit = fadeOut(tween(120)) + slideOutVertically { it / 5 }) {
+        if (!wheelOpen && !showProPanel) {
+            Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
+                .padding(bottom = 144.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
@@ -345,8 +342,8 @@ fun CameraScreen() {
                             .padding(horizontal = 12.dp, vertical = 6.dp))
                 }
             }
+            }
         }
-
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 144.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
