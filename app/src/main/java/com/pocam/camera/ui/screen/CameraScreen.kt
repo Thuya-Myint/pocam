@@ -322,7 +322,7 @@ fun CameraScreen() {
                             modifier = Modifier
                                 .background(if (active) Color(0xFFFFD88C) else Color.Transparent,
                                     RoundedCornerShape(16.dp))
-                                .clickable {
+                                .clickable(enabled = !captureBusy) {
                                     if (mode == CameraMode.PRO && target != CameraMode.PRO) {
                                         controller.resetManual()
                                         showProPanel = false
@@ -410,8 +410,8 @@ fun CameraScreen() {
             Box(contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode,
                     onCapture = {
+                        if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
-                            if (captureBusy) return@ShutterButton
                             captureBusy = true
                             scope.launch {
                                 if (timerSeconds > 0) {
@@ -437,6 +437,7 @@ fun CameraScreen() {
                         }
                     },
                     onModeSelected = {
+                        if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.PRO && it != CameraMode.PRO) {
                             controller.resetManual()
                             showProPanel = false
@@ -458,7 +459,7 @@ fun CameraScreen() {
             }
             Box(Modifier.size(52.dp)
                 .background(Color(0xFF323640), RoundedCornerShape(16.dp))
-                .clickable {
+                .clickable(enabled = !captureBusy) {
                     showSettings = false
                     showProPanel = false
                     previewView?.let { view ->
