@@ -30,6 +30,9 @@ import androidx.compose.material.icons.rounded.FlashOff
 import androidx.compose.material.icons.rounded.GridOn
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -264,15 +267,30 @@ fun CameraScreen() {
             )
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 140.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 150.dp),
             enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(mode.name, color = Color.White, fontSize = 11.sp,
-                    letterSpacing = 2.sp,
-                    modifier = Modifier.background(Color(0xCB202329),
-                        RoundedCornerShape(24.dp))
-                        .padding(horizontal = 16.dp, vertical = 7.dp))
+                Row(Modifier.background(Color(0xD921242C), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(CameraMode.PHOTO, CameraMode.PRO, CameraMode.VIDEO).forEach { target ->
+                        Text(target.name, fontSize = 10.sp, letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (mode == target) Color.Black else Color.LightGray,
+                            modifier = Modifier.background(
+                                if (mode == target) Color(0xFFFFD88C) else Color.Transparent,
+                                RoundedCornerShape(18.dp))
+                                .clickable {
+                                    if (mode == CameraMode.PRO && target != CameraMode.PRO) {
+                                        controller.resetManual()
+                                        showProPanel = false
+                                    }
+                                    mode = target
+                                }
+                                .padding(horizontal = 12.dp, vertical = 7.dp))
+                    }
+                }
                 ZoomRail(zoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
@@ -281,15 +299,17 @@ fun CameraScreen() {
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 96.dp, bottom = 140.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 150.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
-            Column(Modifier.heightIn(max = proMaxHeight)
-                .background(Color(0xEB17191E), RoundedCornerShape(18.dp))
+            Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight.coerceAtMost(350.dp))
+                .shadow(18.dp, RoundedCornerShape(26.dp))
+                .background(Color(0xF51D2028), RoundedCornerShape(26.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("PRO", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("MANUAL STUDIO  ·  PRO", color = Color(0xFFFFD88C),
+                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 12.sp)
                     IconButton(onClick = { showProPanel = false }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Close Pro controls",
                             tint = Color.White)
