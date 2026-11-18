@@ -328,6 +328,7 @@ fun CameraScreen() {
                                         showProPanel = false
                                     }
                                     mode = target
+                                    showProPanel = target == CameraMode.PRO
                                     showSettings = false
                                 }
                                 .padding(horizontal = 9.dp, vertical = 9.dp))
@@ -347,7 +348,7 @@ fun CameraScreen() {
             }
             }
         }
-        AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
+        AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !wheelOpen && !showSettings,
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 144.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
@@ -356,7 +357,9 @@ fun CameraScreen() {
                 .background(Color(0xF51D2028), RoundedCornerShape(26.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
                     Text("MANUAL STUDIO  ·  PRO", color = Color(0xFFFFD88C),
                         fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 12.sp)
                     IconButton(onClick = { showProPanel = false }) {
@@ -375,7 +378,7 @@ fun CameraScreen() {
                         (if (exposureRange.first == exposureRange.last) 1f
                         else exposureRange.last.toFloat()),
                     enabled = exposureRange.first != exposureRange.last,
-                    modifier = Modifier.width(180.dp))
+                    modifier = Modifier.fillMaxWidth())
                 ManualControls(controller, cameraGeneration)
             }
         }
@@ -439,12 +442,19 @@ fun CameraScreen() {
                             showProPanel = false
                         }
                         mode = it
+                        showProPanel = it == CameraMode.PRO
                         showSettings = false
                         exposureRange = controller.exposureRange()
                         exposureIndex = 0
                         controller.setExposure(0)
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
-
+                if (captureBusy) {
+                    Text(if (countdown != null) "TIMER" else "SAVING",
+                        color = Color(0xFFFFD88C), fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .offset(y = (-14).dp))
+                }
             }
             Box(Modifier.size(52.dp)
                 .background(Color(0xFF323640), RoundedCornerShape(16.dp))
