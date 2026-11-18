@@ -169,10 +169,10 @@ fun CameraScreen() {
                     implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
-                    controller.bind(owner, this, { error = it }) {
+                    controller.bind(owner, this, { error = it }, onReady = {
                         cameraGeneration++
                         exposureRange = controller.exposureRange()
-                    }
+                    })
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
                             controller.focusAt(this, event.x, event.y)
