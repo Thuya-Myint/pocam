@@ -1,5 +1,13 @@
 package com.pocam.camera.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -29,10 +37,13 @@ import kotlin.math.roundToInt
 fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
+    val shutterScale by animateFloatAsState(if (expanded) 0.85f else 1f, spring(), label = "shutter")
     Box(Modifier.size(264.dp), contentAlignment = Alignment.Center) {
-        if (expanded) RadialModeWheel(hovered)
+        AnimatedVisibility(expanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+            RadialModeWheel(hovered)
+        }
         Box(
-            Modifier.size(88.dp).border(3.dp, Color.White, CircleShape)
+            Modifier.scale(shutterScale).size(88.dp).border(3.dp, Color.White, CircleShape)
                 .background(Color(0xFF202126), CircleShape)
                 .pointerInput(mode) {
                     awaitEachGesture {
