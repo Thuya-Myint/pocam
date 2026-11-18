@@ -272,10 +272,11 @@ fun CameraScreen() {
                 RadialModeWheel(wheelHover)
             }
         }
-        AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter).zIndex(15f)
-            .padding(top = 164.dp, start = 12.dp, end = 12.dp),
-            enter = fadeIn(tween(190)) + slideInVertically { -it / 4 },
-            exit = fadeOut(tween(130)) + slideOutVertically { -it / 4 }) {
+        if (showSettings && !wheelOpen) {
+            Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
+                .padding(top = 164.dp, start = 12.dp, end = 12.dp)
+                .heightIn(max = (availableHeight - 310.dp).coerceAtLeast(180.dp))
+                .verticalScroll(rememberScrollState())) {
             ViewfinderSettings(
                 grid = gridEnabled,
                 onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
@@ -299,9 +300,10 @@ fun CameraScreen() {
                 },
                 onClose = { showSettings = false }
             )
+            }
         }
         // Shooting controls are always reachable and drawn above the preview.
-        if (!wheelOpen && !showProPanel) {
+        if (!wheelOpen && !showProPanel && !showSettings) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
                 .padding(bottom = 144.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
@@ -326,6 +328,7 @@ fun CameraScreen() {
                                         showProPanel = false
                                     }
                                     mode = target
+                                    showSettings = false
                                 }
                                 .padding(horizontal = 9.dp, vertical = 9.dp))
                     }
@@ -436,6 +439,7 @@ fun CameraScreen() {
                             showProPanel = false
                         }
                         mode = it
+                        showSettings = false
                         exposureRange = controller.exposureRange()
                         exposureIndex = 0
                         controller.setExposure(0)
@@ -445,6 +449,8 @@ fun CameraScreen() {
             Box(Modifier.size(52.dp)
                 .background(Color(0xFF323640), RoundedCornerShape(16.dp))
                 .clickable {
+                    showSettings = false
+                    showProPanel = false
                     previewView?.let { view ->
                         controller.flip(owner, view, { error = it }) {
                             cameraGeneration++
