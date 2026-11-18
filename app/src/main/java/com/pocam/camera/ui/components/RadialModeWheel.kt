@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,20 +28,25 @@ val wheelModes = listOf(CameraMode.PHOTO, CameraMode.VIDEO, CameraMode.PORTRAIT,
 
 @Composable
 fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val accent = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
+        else Color(0xFFFFD88C)
+    }
     Column(modifier.widthIn(max = 340.dp).fillMaxWidth()
         .background(Color(0xF21B1E26), RoundedCornerShape(24.dp))
         .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(24.dp))
         .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("SLIDE TO CHOOSE MODE", color = Color(0xFFFFD88C),
+        Text("SLIDE TO CHOOSE MODE", color = accent,
             fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically) {
             wheelModes.forEach { mode ->
                 val active = mode == selected
                 Column(Modifier.weight(1f).background(
-                    if (active) Color(0xFFFFD88C) else Color(0xFF303540),
+                    if (active) accent else Color(0xFF303540),
                     RoundedCornerShape(12.dp))
                     .padding(horizontal = 1.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
