@@ -115,6 +115,13 @@ class CameraController(private val context: Context) {
         Camera2CameraControl.from(activeCamera.cameraControl).setCaptureRequestOptions(builder.build())
     }
 
+    private var torchEnabled = false
+    fun hasTorch(): Boolean = camera?.cameraInfo?.hasFlashUnit() == true
+    fun setTorch(enabled: Boolean) {
+        torchEnabled = enabled && hasTorch()
+        camera?.cameraControl?.enableTorch(torchEnabled)
+    }
+
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
@@ -131,6 +138,7 @@ class CameraController(private val context: Context) {
                 camera = cameraProvider.bindToLifecycle(owner, selector, preview, capture)
                 provider = cameraProvider
                 setZoom(zoom)
+                setTorch(torchEnabled)
                 applyManual()
                 onCameraReady?.invoke()
             } catch (e: Exception) {
@@ -142,6 +150,7 @@ class CameraController(private val context: Context) {
     fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
         front = !front
         zoom = 1f
+        torchEnabled = false
         manualIso = null
         manualExposureNs = null
         manualFocusDiopters = null
