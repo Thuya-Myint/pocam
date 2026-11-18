@@ -11,14 +11,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val gold = Color(0xFFFFD88C)
 
 @Composable
 fun ViewfinderSettings(
@@ -36,20 +38,25 @@ fun ViewfinderSettings(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val accent = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
+        else Color(0xFFFFD88C)
+    }
     Column(modifier.background(Color(0xF722252D), RoundedCornerShape(22.dp))
         .animateContentSize().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("CAMERA SETTINGS", color = Color.White, fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp, fontSize = 12.sp)
-            Text("DONE", color = gold, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            Text("DONE", color = accent, fontWeight = FontWeight.Bold, fontSize = 12.sp,
                 modifier = Modifier.clickable(onClick = onClose))
         }
         HorizontalDivider(color = Color.White.copy(alpha = .12f))
-        SettingsSwitch("Composition grid", grid) { onGrid(!grid) }
-        SettingsSwitch("Center crosshair", level) { onLevel(!level) }
-        SettingsSwitch("Live torch", torch, torchAvailable) { onTorch(!torch) }
-        SettingsSwitch("Performance HUD", performance) { onPerformance(!performance) }
+        SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
+        SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
+        SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
+        SettingsSwitch("Performance HUD", performance, accent = accent) { onPerformance(!performance) }
         Text("CAPTURE TIMER", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -58,7 +65,7 @@ fun ViewfinderSettings(
                     color = if (timer == seconds) Color.Black else Color.White,
                     fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                     modifier = Modifier.background(
-                        if (timer == seconds) gold else Color(0xFF383C46),
+                        if (timer == seconds) accent else Color(0xFF383C46),
                         RoundedCornerShape(12.dp))
                         .clickable { onTimer(seconds) }
                         .padding(horizontal = 15.dp, vertical = 10.dp))
@@ -69,7 +76,7 @@ fun ViewfinderSettings(
 
 @Composable
 private fun SettingsSwitch(label: String, enabled: Boolean,
-                           available: Boolean = true, onClick: () -> Unit) {
+                           available: Boolean = true, accent: Color, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(enabled = available, onClick = onClick)
         .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween) {
