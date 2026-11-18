@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
@@ -45,7 +43,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
 
     Column(modifier.width(220.dp)
         .background(Color(0xE6202126), RoundedCornerShape(16.dp))
-        .verticalScroll(rememberScrollState()).padding(12.dp),
+        .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("PRO CONTROLS", color = Color.White)
         Button(onClick = { caps = controller.manualCapabilities() }) {
