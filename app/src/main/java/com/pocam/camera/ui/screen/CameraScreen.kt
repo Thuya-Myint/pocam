@@ -52,6 +52,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.dynamicDarkColorScheme
+import android.os.Build
 import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
@@ -100,6 +102,11 @@ import com.pocam.camera.ui.components.ManualControls
 @Composable
 fun CameraScreen() {
     val context = LocalContext.current
+    val accent = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            dynamicDarkColorScheme(context).primary
+        } else Color(0xFFFFD88C)
+    }
     val owner = LocalLifecycleOwner.current
     val controller = remember(context) { CameraController(context) }
     var permitted by remember {
@@ -221,7 +228,7 @@ fun CameraScreen() {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(mode.name,
-                    color = Color(0xFFFFD88C), fontSize = 11.sp,
+                    color = accent, fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 if (performanceEnabled) PerformanceHud()
             }
@@ -236,14 +243,14 @@ fun CameraScreen() {
                 horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 IconButton(onClick = { showSettings = !showSettings }) {
                     Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
-                        tint = if (showSettings) Color(0xFFFFD88C) else Color.White)
+                        tint = if (showSettings) accent else Color.White)
                 }
                 IconButton(onClick = {
                     gridEnabled = !gridEnabled
                     preferences.edit().putBoolean("grid", gridEnabled).apply()
                 }) {
                     Icon(Icons.Rounded.GridOn, contentDescription = "Toggle composition grid",
-                        tint = if (gridEnabled) Color(0xFFFFD88C) else Color.White)
+                        tint = if (gridEnabled) accent else Color.White)
                 }
                 IconButton(onClick = {
                     if (controller.hasTorch()) {
@@ -253,7 +260,7 @@ fun CameraScreen() {
                 }) {
                     Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
                         contentDescription = "Toggle live torch",
-                        tint = if (torchEnabled) Color(0xFFFFD88C) else Color.White)
+                        tint = if (torchEnabled) accent else Color.White)
                 }
                 IconButton(onClick = {
                     timerSeconds = when (timerSeconds) { 0 -> 3; 3 -> 5; 5 -> 10; else -> 0 }
@@ -261,15 +268,15 @@ fun CameraScreen() {
                 }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Rounded.Timer, contentDescription = "Cycle capture timer",
-                            tint = if (timerSeconds > 0) Color(0xFFFFD88C) else Color.White)
+                            tint = if (timerSeconds > 0) accent else Color.White)
                         if (timerSeconds > 0) Text("${timerSeconds}s",
-                            color = Color(0xFFFFD88C), fontSize = 9.sp)
+                            color = accent, fontSize = 9.sp)
                     }
                 }
                 if (mode == CameraMode.PRO) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
-                            contentDescription = "Pro manual studio", tint = Color(0xFFFFD88C))
+                            contentDescription = "Pro manual studio", tint = accent)
                     }
                 }
             }
@@ -328,7 +335,7 @@ fun CameraScreen() {
                             fontWeight = FontWeight.Bold,
                             color = if (active) Color(0xFF15171C) else Color.White,
                             modifier = Modifier
-                                .background(if (active) Color(0xFFFFD88C) else Color.Transparent,
+                                .background(if (active) accent else Color.Transparent,
                                     RoundedCornerShape(16.dp))
                                 .clickable(enabled = !captureBusy) {
                                     if (mode == CameraMode.PRO && target != CameraMode.PRO) {
@@ -368,7 +375,7 @@ fun CameraScreen() {
                 Row(Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("MANUAL STUDIO  ·  PRO", color = Color(0xFFFFD88C),
+                    Text("MANUAL STUDIO  ·  PRO", color = accent,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 12.sp)
                     IconButton(onClick = { showProPanel = false }) {
                         Icon(Icons.Rounded.Close, contentDescription = "Close Pro controls",
@@ -465,7 +472,7 @@ fun CameraScreen() {
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
                 if (captureBusy) {
                     Text(if (countdown != null) "TIMER" else "SAVING",
-                        color = Color(0xFFFFD88C), fontSize = 9.sp,
+                        color = accent, fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.align(Alignment.TopCenter)
                             .offset(y = (-14).dp))
