@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -29,19 +30,26 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 @Composable
-fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
+fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
     val haptics = LocalHapticFeedback.current
+    val busyNow by androidx.compose.runtime.rememberUpdatedState(busy)
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
     var pressing by remember { mutableStateOf(false) }
     val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh), label = "shutter")
     Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
         Box(
-            Modifier.zIndex(3f).scale(shutterScale).size(88.dp).border(3.dp, Color.White, CircleShape)
+            Modifier.zIndex(3f).scale(shutterScale).alpha(if (busy) .55f else 1f).size(88.dp).border(3.dp, Color.White, CircleShape)
                 .background(Color(0xFF202126), CircleShape)
                 .pointerInput(mode) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        if (busyNow) {
+                            do {
+                                val ignored = awaitPointerEvent()
+                            } while (ignored.changes.any { it.pressed })
+                            return@awaitEachGesture
+                        }
                         val pointerId = down.id
                         pressing = true
                         val releasedBeforeHold = withTimeoutOrNull(450L) {
