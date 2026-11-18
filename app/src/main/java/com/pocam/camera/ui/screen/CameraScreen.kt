@@ -283,7 +283,7 @@ fun CameraScreen() {
             }
         }
         if (wheelOpen) {
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 244.dp).zIndex(20f)) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp).zIndex(20f)) {
                 RadialModeWheel(wheelHover)
             }
         }
