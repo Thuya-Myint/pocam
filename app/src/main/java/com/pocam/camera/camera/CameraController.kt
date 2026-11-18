@@ -6,6 +6,9 @@ import android.os.Build
 import android.provider.MediaStore
 import android.content.ContentValues
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.content.Context.CAMERA_SERVICE
+import androidx.camera.core.CameraInfo
 import android.hardware.camera2.CaptureRequest
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
@@ -47,6 +50,44 @@ class CameraController(private val context: Context) {
     private var onCameraReady: (() -> Unit)? = null
     private var camera: Camera? = null
     private var front = false
+    data class RearLens(val id: String, val focalMm: Float, val label: String)
+    private val cameraManager by lazy { context.getSystemService(CAMERA_SERVICE) as CameraManager }
+    val rearLenses: List<RearLens> by lazy {
+        try {
+            val candidates = cameraManager.cameraIdList.mapNotNull { id ->
+                val ch = cameraManager.getCameraCharacteristics(id)
+                if (ch.get(CameraCharacteristics.LENS_FACING) != CameraCharacteristics.LENS_FACING_BACK) null
+                else {
+                    val focal = ch.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                        ?.minOrNull()
+                    if (focal == null || focal <= 0f) null else id to focal
+                }
+            }.sortedBy { it.second }
+            // Only list distinct cameras actually exposed by the Android camera service.
+            val mainFocal = candidates.getOrNull(candidates.size / 2)?.second ?: 1f
+            candidates.map { (id, focal) ->
+                val ratio = mainFocal / focal
+                RearLens(id, focal, String.format(Locale.US, "%.1f×", ratio))
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+    private var requestedLensId: String? = null
+    fun selectedLensId(): String? = requestedLensId
+    fun isFrontCamera(): Boolean = front
+    fun selectRearLens(id: String) {
+        if (rearLenses.any { it.id == id }) {
+            front = false
+            requestedLensId = id
+            zoom = 1f
+        }
+    }
+    fun activeCameraId(): String? = camera?.cameraInfo?.let {
+        Camera2CameraInfo.from(it).cameraId
+    }
+    fun activeFocalLength(): Float? = camera?.cameraInfo?.let {
+        Camera2CameraInfo.from(it).getCameraCharacteristic(
+            CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.firstOrNull()
+    }
     private var activeMode = CameraMode.PHOTO
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
@@ -162,6 +203,13 @@ class CameraController(private val context: Context) {
                 val cameraProvider = future.get()
                 val baseSelector = if (front) CameraSelector.DEFAULT_FRONT_CAMERA
                     else CameraSelector.DEFAULT_BACK_CAMERA
+                val requestedId = if (front) null else requestedLensId
+                val chosenBase = if (requestedId == null) baseSelector else CameraSelector.Builder()
+                    .addCameraFilter { infos ->
+                        infos.filter { info ->
+                            Camera2CameraInfo.from(info).cameraId == requestedId
+                        }
+                    }.build()
                 val extensionMode = when (mode) {
                     CameraMode.NIGHT -> ExtensionMode.NIGHT
                     CameraMode.PORTRAIT -> ExtensionMode.BOKEH
@@ -176,9 +224,9 @@ class CameraController(private val context: Context) {
                             mode == CameraMode.PORTRAIT || mode == CameraMode.PHOTO) extensionMode
                             else -1
                         val selector = if (selectedExtension != -1 &&
-                            extensions.isExtensionAvailable(baseSelector, selectedExtension)) {
-                            extensions.getExtensionEnabledCameraSelector(baseSelector, selectedExtension)
-                        } else baseSelector
+                            requestedId == null && extensions.isExtensionAvailable(chosenBase, selectedExtension)) {
+                            extensions.getExtensionEnabledCameraSelector(chosenBase, selectedExtension)
+                        } else chosenBase
                         val preview = Preview.Builder().build().also {
                             it.surfaceProvider = view.surfaceProvider
                         }
@@ -255,6 +303,7 @@ class CameraController(private val context: Context) {
 
     fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
         front = !front
+        requestedLensId = null
         zoom = 1f
         torchEnabled = false
         manualIso = null

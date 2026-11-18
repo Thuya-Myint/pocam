@@ -132,6 +132,8 @@ fun CameraScreen() {
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
     var maxZoom by remember { mutableStateOf(4f) }
+    var activeLensId by remember { mutableStateOf<String?>(null) }
+    var activeFocalMm by remember { mutableStateOf<Float?>(null) }
     var showProPanel by remember { mutableStateOf(false) }
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
@@ -186,6 +188,8 @@ fun CameraScreen() {
                         cameraGeneration++
                         exposureRange = controller.exposureRange()
                         maxZoom = controller.maxZoom()
+                        activeLensId = controller.activeCameraId()
+                        activeFocalMm = controller.activeFocalLength()
                     })
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
@@ -327,6 +331,31 @@ fun CameraScreen() {
                 .padding(bottom = 126.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        controller.rearLenses.forEach { lens ->
+                            val selected = activeLensId == lens.id
+                            Box(Modifier.background(
+                                if (selected) accent.copy(alpha = .9f) else Color(0x88303842),
+                                CircleShape).clickable(enabled = !captureBusy && !recordingVideo) {
+                                controller.selectRearLens(lens.id)
+                                zoom = 1f
+                                previewView?.let { view ->
+                                    controller.bind(owner, view, { error = it }, {
+                                        cameraGeneration++
+                                        maxZoom = controller.maxZoom()
+                                        activeLensId = controller.activeCameraId()
+                                        activeFocalMm = controller.activeFocalLength()
+                                    }, mode)
+                                }
+                            }.padding(horizontal = 12.dp, vertical = 7.dp)) {
+                                Text(lens.label, color = if (selected) Color.Black else Color.White,
+                                    fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
                 ZoomRail(zoom, maxZoom = maxZoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
@@ -460,6 +489,10 @@ fun CameraScreen() {
                                 cameraGeneration++
                                 exposureRange = controller.exposureRange()
                                 maxZoom = controller.maxZoom()
+                            activeLensId = controller.activeCameraId()
+                            activeFocalMm = controller.activeFocalLength()
+                                activeLensId = controller.activeCameraId()
+                                activeFocalMm = controller.activeFocalLength()
                             }, it)
                         }
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
