@@ -101,7 +101,8 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
             }
         }
     }
-    Row(Modifier.width(150.dp).height(20.dp)
+    Row(Modifier.width(176.dp).height(44.dp)
+        .background(Color(0x991B1F28), RoundedCornerShape(22.dp))
         .pointerInput(Unit) {
             detectHorizontalDragGestures(
                 onDragStart = { dragAccumulated = 0f },
@@ -119,8 +120,8 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
                 })
         }, horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically) {
-        Text("SWIPE TO ZOOM", color = Color.White.copy(alpha = .8f),
-            fontSize = 9.sp, letterSpacing = 1.sp)
+        Text("←  SWIPE TO ZOOM  →", color = Color.White.copy(alpha = .9f),
+            fontSize = 10.sp, letterSpacing = .5.sp)
     }
     }
 }
