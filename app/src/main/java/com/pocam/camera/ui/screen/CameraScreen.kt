@@ -63,10 +63,12 @@ fun CameraScreen() {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (permitted) {
             AndroidView(factory = { ctx ->
-                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER; previewView = this }
-            }, modifier = Modifier.fillMaxSize(), update = { view ->
-                controller.bind(owner, view) { error = it }
-            })
+                PreviewView(ctx).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    previewView = this
+                    controller.bind(owner, this) { error = it }
+                }
+            }, modifier = Modifier.fillMaxSize())
         }
         Text("pocam.", color = Color.White,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
