@@ -94,6 +94,9 @@ class CameraController(private val context: Context) {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var recordingActive = false
+    private var requestedVideoQuality = Quality.FHD
+    fun setVideoQuality(quality: Quality) { requestedVideoQuality = quality }
+    fun getVideoQuality(): Quality = requestedVideoQuality
     private var bindGeneration = 0
     fun isRecording(): Boolean = recordingActive
     // Diagnostics remain available to developers, not shown in the viewfinder.
@@ -254,7 +257,7 @@ class CameraController(private val context: Context) {
                         cameraProvider.unbindAll()
                         if (mode == CameraMode.VIDEO) {
                             val recorder = Recorder.Builder()
-                                .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD))).build()
+                                .setQualitySelector(QualitySelector.from(requestedVideoQuality, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))).build()
                             val video = VideoCapture.Builder(recorder)
                                 .setVideoStabilizationEnabled(true).build()
                             camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
@@ -343,6 +346,8 @@ class CameraController(private val context: Context) {
         zoom = clamped
         camera?.cameraControl?.setZoomRatio(clamped)
     }
+
+    fun exposureIndex(): Int = camera?.cameraInfo?.exposureState?.exposureCompensationIndex ?: 0
 
     fun exposureRange(): IntRange {
         val range = camera?.cameraInfo?.exposureState?.exposureCompensationRange

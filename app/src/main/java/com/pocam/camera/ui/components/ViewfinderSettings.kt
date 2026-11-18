@@ -39,6 +39,8 @@ fun ViewfinderSettings(
     onTorch: (Boolean) -> Unit,
     timer: Int,
     onTimer: (Int) -> Unit,
+    videoQuality: String,
+    onVideoQuality: (String) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -60,6 +62,20 @@ fun ViewfinderSettings(
         SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
         SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
         SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
+        Text("VIDEO RESOLUTION", color = Color.LightGray, fontSize = 11.sp,
+            letterSpacing = 1.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            listOf("720p", "1080p", "4K").forEach { option ->
+                val selected = videoQuality == option
+                Box(Modifier.size(56.dp)
+                    .background(if (selected) accent else Color(0xFF383C46), CircleShape)
+                    .clickable { onVideoQuality(option) },
+                    contentAlignment = Alignment.Center) {
+                    Text(option, color = if (selected) Color.Black else Color.White,
+                        fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                }
+            }
+        }
         Text("CAPTURE TIMER", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

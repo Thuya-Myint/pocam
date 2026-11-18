@@ -50,6 +50,7 @@ import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
+import androidx.camera.video.Quality
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -147,6 +148,14 @@ fun CameraScreen() {
     var countdown by remember { mutableStateOf<Int?>(null) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
+    var videoQuality by remember { mutableStateOf(preferences.getString("video_quality", "1080p") ?: "1080p") }
+    LaunchedEffect(videoQuality) {
+        controller.setVideoQuality(when (videoQuality) {
+            "4K" -> Quality.UHD
+            "720p" -> Quality.HD
+            else -> Quality.FHD
+        })
+    }
     var torchEnabled by remember { mutableStateOf(false) }
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
@@ -324,6 +333,14 @@ fun CameraScreen() {
                 torchAvailable = controller.hasTorch(),
                 onTorch = { torchEnabled = it; controller.setTorch(it) },
                 timer = timerSeconds,
+                videoQuality = videoQuality,
+                onVideoQuality = { selected ->
+                    videoQuality = selected
+                    preferences.edit().putString("video_quality", selected).apply()
+                    if (!recordingVideo && mode == CameraMode.VIDEO) {
+                        previewView?.let { view -> controller.bind(owner, view, { error = it }, { cameraGeneration++ }, mode) }
+                    }
+                },
                 onTimer = {
                     timerSeconds = it
                     preferences.edit().putInt("timer", it).apply()
