@@ -25,6 +25,12 @@ import androidx.compose.material.icons.rounded.Cameraswitch
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.FlashOff
+import androidx.compose.material.icons.rounded.GridOn
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import android.Manifest
@@ -106,6 +112,7 @@ fun CameraScreen() {
     var showProPanel by remember { mutableStateOf(false) }
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
+    var captureBusy by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf<Int?>(null) }
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
     var torchEnabled by remember { mutableStateOf(false) }
@@ -196,7 +203,13 @@ fun CameraScreen() {
                 Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
                     letterSpacing = 2.sp)
             }
-            if (performanceEnabled) PerformanceHud()
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(if (mode == CameraMode.PRO) "PRO" else "PHOTO",
+                    color = Color(0xFFFFD88C), fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                if (performanceEnabled) PerformanceHud()
+            }
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
@@ -220,6 +233,232 @@ fun CameraScreen() {
                     fontSize = 24.sp, modifier = Modifier.clickable {
                         gridEnabled = !gridEnabled
                     }.padding(12.dp))
+            }
+        }
+        AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter)
+            .padding(top = 156.dp, start = 12.dp, end = 12.dp),
+            enter = fadeIn(tween(190)) + slideInVertically { -it / 4 },
+            exit = fadeOut(tween(130)) + slideOutVertically { -it / 4 }) {
+            ViewfinderSettings(
+                grid = gridEnabled,
+                onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
+                level = crosshairEnabled,
+                onLevel = {
+                    crosshairEnabled = it
+                    preferences.edit().putBoolean("crosshair", it).apply()
+                },
+                torch = torchEnabled,
+                torchAvailable = controller.hasTorch(),
+                onTorch = { torchEnabled = it; controller.setTorch(it) },
+                timer = timerSeconds,
+                onTimer = {
+                    timerSeconds = it
+                    preferences.edit().putInt("timer", it).apply()
+                },
+                performance = performanceEnabled,
+                onPerformance = {
+                    performanceEnabled = it
+                    preferences.edit().putBoolean("performance", it).apply()
+                },
+                onClose = { showSettings = false }
+            )
+        }
+        AnimatedVisibility(!wheelOpen && !showProPanel,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 140.dp),
+            enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(mode.name, color = Color.White, fontSize = 11.sp,
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.background(Color(0xCB202329),
+                        RoundedCornerShape(24.dp))
+                        .padding(horizontal = 16.dp, vertical = 7.dp))
+                ZoomRail(zoom, onSelect = { value ->
+                    zoom = value
+                    controller.setZoom(value)
+                })
+            }
+        }
+
+        AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 96.dp, bottom = 140.dp),
+            enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
+            exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
+            Column(Modifier.heightIn(max = proMaxHeight)
+                .background(Color(0xEB17191E), RoundedCornerShape(18.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("PRO", color = Color.White, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { showProPanel = false }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close Pro controls",
+                            tint = Color.White)
+                    }
+                }
+                Text("EV ${exposureIndex * controller.exposureStepEv()}",
+                    color = Color.White, fontSize = 12.sp)
+                Slider(value = exposureIndex.toFloat(),
+                    onValueChange = {
+                        exposureIndex = it.toInt().coerceIn(exposureRange.first, exposureRange.last)
+                        controller.setExposure(exposureIndex)
+                    },
+                    valueRange = exposureRange.first.toFloat()..
+                        (if (exposureRange.first == exposureRange.last) 1f
+                        else exposureRange.last.toFloat()),
+                    enabled = exposureRange.first != exposureRange.last,
+                    modifier = Modifier.width(180.dp))
+                ManualControls(controller, cameraGeneration)
+            }
+        }
+
+        // Single integrated control dock. The shutter has an 88dp footprint,
+        // so it no longer pushes the other controls into disconnected positions.
+        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(
+                listOf(Color(0xF222252D), Color(0xFF101217))),
+                RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+            .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp)
+                .background(Color(0xFF323640), RoundedCornerShape(16.dp))
+                .clickable(enabled = lastPhoto != null) {
+                    lastPhoto?.let { uri ->
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "image/jpeg")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            })
+                        } catch (_: Exception) { error = "No photo viewer available" }
+                    }
+                }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
+                    tint = if (lastPhoto == null) Color.LightGray else Color.White)
+            }
+            Box(contentAlignment = Alignment.Center) {
+                ShutterButton(mode = mode,
+                    onCapture = {
+                        if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
+                            if (captureBusy) return@ShutterButton
+                            captureBusy = true
+                            scope.launch {
+                                if (timerSeconds > 0) {
+                                    for (remaining in timerSeconds downTo 1) {
+                                        countdown = remaining
+                                        delay(1000)
+                                    }
+                                }
+                                countdown = null
+                                captureFlash = true
+                                controller.takePhoto(
+                                onSaved = { uri ->
+                                    captureBusy = false
+                                    lastPhoto = uri
+                                    Toast.makeText(context, "Saved to Pocam photos",
+                                        Toast.LENGTH_SHORT).show()
+                                },
+                                onError = { captureBusy = false; error = it })
+                            }
+                        } else {
+                            Toast.makeText(context, "${mode.name} coming soon",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onModeSelected = {
+                        if (mode == CameraMode.PRO && it != CameraMode.PRO) {
+                            controller.resetManual()
+                            showProPanel = false
+                        }
+                        mode = it
+                        exposureRange = controller.exposureRange()
+                        exposureIndex = 0
+                        controller.setExposure(0)
+                    }, onWheelChange = { wheelOpen = it })
+
+            }
+            Box(Modifier.size(52.dp)
+                .background(Color(0xFF323640), RoundedCornerShape(16.dp))
+                .clickable {
+                    previewView?.let { view ->
+                        controller.flip(owner, view, { error = it }) {
+                            cameraGeneration++
+                            exposureRange = controller.exposureRange()
+                            exposureIndex = 0
+                        }
+                        zoom = 1f
+                        torchEnabled = false
+                    }
+                }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
+                    tint = Color.White)
+            }
+        }
+        countdown?.let { remaining ->
+            Box(Modifier.align(Alignment.Center)
+                .background(Color(0xBB111319), CircleShape).size(110.dp),
+                contentAlignment = Alignment.Center) {
+                Text("$remaining", color = Color.White, fontSize = 60.sp,
+                    fontWeight = FontWeight.Bold)
+            }
+        }
+        error?.let {
+            Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
+                .background(Color(0xCC550000), RoundedCornerShape(12.dp))
+                .clickable { error = null }.padding(12.dp))
+        }
+    }
+}        // One-handed quick actions, with separate access to full settings.
+        AnimatedVisibility(!wheelOpen,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 94.dp),
+            enter = fadeIn(tween(170)), exit = fadeOut(tween(120))) {
+            Row(Modifier.shadow(8.dp, RoundedCornerShape(30.dp))
+                .background(Color(0xD81A1D24), RoundedCornerShape(30.dp))
+                .padding(horizontal = 5.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                IconButton(onClick = {
+                    gridEnabled = !gridEnabled
+                    preferences.edit().putBoolean("grid", gridEnabled).apply()
+                }) {
+                    Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
+                        tint = if (gridEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    if (controller.hasTorch()) {
+                        torchEnabled = !torchEnabled
+                        controller.setTorch(torchEnabled)
+                    }
+                }) {
+                    Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                        contentDescription = "Toggle torch",
+                        tint = if (torchEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    timerSeconds = when (timerSeconds) {
+                        0 -> 3
+                        3 -> 5
+                        5 -> 10
+                        else -> 0
+                    }
+                    preferences.edit().putInt("timer", timerSeconds).apply()
+                }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Rounded.Timer, contentDescription = "Cycle capture timer",
+                            tint = if (timerSeconds > 0) Color(0xFFFFD88C) else Color.White)
+                        if (timerSeconds > 0) Text("${timerSeconds}s",
+                            fontSize = 9.sp, color = Color(0xFFFFD88C))
+                    }
+                }
+                IconButton(onClick = { showSettings = !showSettings }) {
+                    Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
+                        tint = if (showSettings) Color(0xFFFFD88C) else Color.White)
+                }
+                if (mode == CameraMode.PRO) {
+                    IconButton(onClick = { showProPanel = !showProPanel }) {
+                        Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
+                            contentDescription = "Pro controls", tint = Color(0xFFFFD88C))
+                    }
+                }
             }
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopEnd)
