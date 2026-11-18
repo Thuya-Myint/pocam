@@ -27,8 +27,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.CancellationException
-import kotlin.math.roundToInt
 
 @Composable
 fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
@@ -83,11 +81,14 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit
                                     val threshold = 22.dp.toPx()
                                     // Horizontal movement steps through the six options.
                                     // Returning to the center restores the original mode.
-                                    val step = if (kotlin.math.abs(dx) < threshold) 0 else
-                                        (dx / 48.dp.toPx()).roundToInt().coerceIn(-3, 3)
+                                    val step = if (kotlin.math.abs(dx) < threshold) 0 else {
+                                        val distance = (kotlin.math.abs(dx) - threshold) / 30.dp.toPx()
+                                        val steps = 1 + distance.toInt()
+                                        if (dx > 0f) steps else -steps
+                                    }
                                     val origin = wheelModes.indexOf(mode).coerceAtLeast(0)
                                     val next = wheelModes[
-                                        (origin + step + wheelModes.size) % wheelModes.size]
+                                        (origin + step).coerceIn(0, wheelModes.lastIndex)]
                                     if (next != hovered) {
                                         hovered = next
                                         onHoverMode(next)
