@@ -268,7 +268,7 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(wheelOpen,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 206.dp).zIndex(20f),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 244.dp).zIndex(20f),
             enter = fadeIn(tween(140)) + scaleIn(initialScale = 0.78f),
             exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.78f)) {
             RadialModeWheel(wheelHover)
@@ -304,12 +304,13 @@ fun CameraScreen() {
         // Shooting controls are always reachable and drawn above the preview.
         AnimatedVisibility(!wheelOpen && !showProPanel,
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 146.dp),
+                .padding(bottom = 144.dp, start = 8.dp, end = 8.dp),
             enter = fadeIn(tween(180)) + slideInVertically { it / 5 },
             exit = fadeOut(tween(120)) + slideOutVertically { it / 5 }) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally,
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.background(Color(0xE91B1F27), RoundedCornerShape(24.dp))
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                    .background(Color(0xE91B1F27), RoundedCornerShape(24.dp))
                     .padding(horizontal = 7.dp, vertical = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -347,7 +348,7 @@ fun CameraScreen() {
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 146.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 144.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
             Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight.coerceAtMost(350.dp))
