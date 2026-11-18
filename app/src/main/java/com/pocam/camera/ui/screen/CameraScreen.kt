@@ -42,6 +42,7 @@ import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
 import com.pocam.camera.ui.components.ShutterButton
 import com.pocam.camera.ui.components.PerformanceHud
+import com.pocam.camera.ui.components.ManualControls
 
 @Composable
 fun CameraScreen() {
@@ -119,6 +120,7 @@ fun CameraScreen() {
                     modifier = Modifier.width(150.dp)
                 )
                 Text("Tap preview to focus", color = Color.LightGray)
+                ManualControls(controller)
             }
         }
         Text("⟳", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
