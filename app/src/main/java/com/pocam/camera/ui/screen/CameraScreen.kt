@@ -68,6 +68,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.pocam.camera.ui.components.ViewfinderSettings
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,7 +104,14 @@ fun CameraScreen() {
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
     var showProPanel by remember { mutableStateOf(false) }
-    var gridEnabled by remember { mutableStateOf(false) }
+    val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
+    val scope = rememberCoroutineScope()
+    var countdown by remember { mutableStateOf<Int?>(null) }
+    var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
+    var torchEnabled by remember { mutableStateOf(false) }
+    var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
+    var performanceEnabled by remember { mutableStateOf(preferences.getBoolean("performance", false)) }
+    var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
     var wheelOpen by remember { mutableStateOf(false) }
     var captureFlash by remember { mutableStateOf(false) }
@@ -155,6 +165,12 @@ fun CameraScreen() {
                 }
             }, modifier = Modifier.fillMaxSize())
         }
+        if (crosshairEnabled) {
+            Box(Modifier.align(Alignment.Center).size(20.dp),
+                contentAlignment = Alignment.Center) {
+                Text("+", color = Color.White.copy(alpha = .8f), fontSize = 24.sp)
+            }
+        }
         if (gridEnabled) {
             CameraGrid(Modifier.fillMaxSize().padding(top = 80.dp, bottom = 200.dp))
         }
@@ -180,7 +196,7 @@ fun CameraScreen() {
                 Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
                     letterSpacing = 2.sp)
             }
-            PerformanceHud()
+            if (performanceEnabled) PerformanceHud()
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
@@ -207,21 +223,32 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopEnd)
-            .padding(top = 74.dp, end = 12.dp),
-            enter = fadeIn(tween(170)) + slideInVertically { -it / 3 },
-            exit = fadeOut(tween(130)) + slideOutVertically { -it / 3 }) {
-            Column(Modifier.background(Color(0xF121232A), RoundedCornerShape(16.dp))
-                .padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("VIEWFINDER", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(if (gridEnabled) "Grid  ·  ON" else "Grid  ·  OFF",
-                    color = Color.White, modifier = Modifier.clickable {
-                        gridEnabled = !gridEnabled
-                    }.padding(vertical = 8.dp))
-                Text("Performance overlay", color = Color.LightGray, fontSize = 11.sp)
-                PerformanceHud()
-                Text("Close", color = Color(0xFFFFD36A),
-                    modifier = Modifier.clickable { showSettings = false }.padding(6.dp))
-            }
+            .padding(top = 94.dp, end = 12.dp),
+            enter = fadeIn(tween(190)) + slideInVertically { -it / 4 },
+            exit = fadeOut(tween(130)) + slideOutVertically { -it / 4 }) {
+            ViewfinderSettings(
+                grid = gridEnabled,
+                onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
+                level = crosshairEnabled,
+                onLevel = {
+                    crosshairEnabled = it
+                    preferences.edit().putBoolean("crosshair", it).apply()
+                },
+                torch = torchEnabled,
+                torchAvailable = controller.hasTorch(),
+                onTorch = { torchEnabled = it; controller.setTorch(it) },
+                timer = timerSeconds,
+                onTimer = {
+                    timerSeconds = it
+                    preferences.edit().putInt("timer", it).apply()
+                },
+                performance = performanceEnabled,
+                onPerformance = {
+                    performanceEnabled = it
+                    preferences.edit().putBoolean("performance", it).apply()
+                },
+                onClose = { showSettings = false }
+            )
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 132.dp),
@@ -301,6 +328,7 @@ fun CameraScreen() {
                         exposureIndex = 0
                     }
                     zoom = 1f
+                    torchEnabled = false
                 }
             }) {
                 Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
@@ -312,14 +340,24 @@ fun CameraScreen() {
                 ShutterButton(mode = mode,
                     onCapture = {
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
-                            captureFlash = true
-                            controller.takePhoto(
+                            if (countdown != null) return@ShutterButton
+                            scope.launch {
+                                if (timerSeconds > 0) {
+                                    for (remaining in timerSeconds downTo 1) {
+                                        countdown = remaining
+                                        delay(1000)
+                                    }
+                                }
+                                countdown = null
+                                captureFlash = true
+                                controller.takePhoto(
                                 onSaved = { uri ->
                                     lastPhoto = uri
                                     Toast.makeText(context, "Saved to Pocam photos",
                                         Toast.LENGTH_SHORT).show()
                                 },
                                 onError = { error = it })
+                            }
                         } else {
                             Toast.makeText(context, "${mode.name} coming soon",
                                 Toast.LENGTH_SHORT).show()
@@ -335,6 +373,14 @@ fun CameraScreen() {
                         exposureIndex = 0
                         controller.setExposure(0)
                     }, onWheelChange = { wheelOpen = it })
+        }
+        countdown?.let { remaining ->
+            Box(Modifier.align(Alignment.Center)
+                .background(Color(0xBB111319), CircleShape).size(110.dp),
+                contentAlignment = Alignment.Center) {
+                Text("$remaining", color = Color.White, fontSize = 60.sp,
+                    fontWeight = FontWeight.Bold)
+            }
         }
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
