@@ -77,18 +77,20 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit
                                 if (change == null || !change.pressed) {
                                     pressed = false
                                 } else {
+                                    // Map the finger direction to the six radial sectors.
+                                    // The dial sits above the shutter, so its center is
+                                    // approximately 150dp above the shutter center.
                                     val dx = change.position.x - size.width / 2f
-                                    val threshold = 22.dp.toPx()
-                                    // Horizontal movement steps through the six options.
-                                    // Returning to the center restores the original mode.
-                                    val step = if (kotlin.math.abs(dx) < threshold) 0 else {
-                                        val distance = (kotlin.math.abs(dx) - threshold) / 30.dp.toPx()
-                                        val steps = 1 + distance.toInt()
-                                        if (dx > 0f) steps else -steps
+                                    val dy = change.position.y - size.height / 2f + 150.dp.toPx()
+                                    val distance = kotlin.math.hypot(dx, dy)
+                                    val next = if (distance < 26.dp.toPx()) mode else {
+                                        val degrees = Math.toDegrees(
+                                            kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
+                                        val sector = kotlin.math.floor(
+                                            (degrees + 120.0 + 360.0) % 360.0 / 60.0
+                                        ).toInt()
+                                        wheelModes[sector]
                                     }
-                                    val origin = wheelModes.indexOf(mode).coerceAtLeast(0)
-                                    val next = wheelModes[
-                                        (origin + step).coerceIn(0, wheelModes.lastIndex)]
                                     if (next != hovered) {
                                         hovered = next
                                         onHoverMode(next)
