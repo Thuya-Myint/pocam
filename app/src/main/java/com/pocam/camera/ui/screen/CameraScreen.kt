@@ -110,13 +110,13 @@ fun CameraScreen() {
         } else Color(0xFFFFD88C)
     }
     val owner = LocalLifecycleOwner.current
-    val tones = remember { ToneGenerator(AudioManager.STREAM_SYSTEM, 22) }
+    val tones = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 75) }
     var lastSoundAt by remember { mutableStateOf(0L) }
     fun playUiTone() {
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastSoundAt >= 55L) {
             lastSoundAt = now
-            tones.startTone(ToneGenerator.TONE_PROP_BEEP, 24)
+            tones.startTone(ToneGenerator.TONE_PROP_BEEP, 45)
         }
     }
     val controller = remember(context) { CameraController(context) }
@@ -414,7 +414,7 @@ fun CameraScreen() {
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
                     onCapture = {
-                        if (captureBusy || recordingVideo) return@ShutterButton
+                        if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.VIDEO) {
                             controller.toggleVideo(
                                 onSaved = { uri -> lastPhoto = uri },
