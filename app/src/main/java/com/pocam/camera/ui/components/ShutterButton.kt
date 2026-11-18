@@ -75,8 +75,8 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                             hovered = mode
                             onHoverMode(mode)
                             var pressed = true
-                            var accumulatedRotation = 0.0
-                            var lastAngle: Double? = null
+                            var horizontalDistance = 0f
+                            var previousX: Float? = null
                             var currentIndex = wheelModes.indexOf(mode).coerceAtLeast(0)
                             while (pressed) {
                                 val event = awaitPointerEvent()
@@ -84,30 +84,22 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                                 if (change == null || !change.pressed) {
                                     pressed = false
                                 } else {
-                                    // Rotate the mode carousel by tracking angular movement
-                                    // around the shutter center, with wraparound at 360 degrees.
-                                    val dx = change.position.x - size.width / 2f
-                                    val dy = change.position.y - size.height / 2f
-                                    val distance = kotlin.math.hypot(dx, dy)
-                                    if (distance >= 24.dp.toPx()) {
-                                        val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
-                                        val previous = lastAngle
-                                        if (previous != null) {
-                                            val delta = ((angle - previous + 540.0) % 360.0) - 180.0
-                                            accumulatedRotation += delta
-                                            while (accumulatedRotation >= 35.0) {
-                                                currentIndex = (currentIndex + 1) % wheelModes.size
-                                                accumulatedRotation -= 35.0
-                                            }
-                                            while (accumulatedRotation <= -35.0) {
-                                                currentIndex = (currentIndex - 1 + wheelModes.size) % wheelModes.size
-                                                accumulatedRotation += 35.0
-                                            }
+                                    // Horizontal swipes rotate the circular carousel.
+                                    // A full step requires 42dp; movement works in both directions.
+                                    val oldX = previousX
+                                    if (oldX != null) {
+                                        horizontalDistance += change.position.x - oldX
+                                        val step = 42.dp.toPx()
+                                        while (horizontalDistance >= step) {
+                                            currentIndex = (currentIndex + 1) % wheelModes.size
+                                            horizontalDistance -= step
                                         }
-                                        lastAngle = angle
-                                    } else {
-                                        lastAngle = null
+                                        while (horizontalDistance <= -step) {
+                                            currentIndex = (currentIndex - 1 + wheelModes.size) % wheelModes.size
+                                            horizontalDistance += step
+                                        }
                                     }
+                                    previousX = change.position.x
                                     val next = wheelModes[currentIndex]
                                     if (next != hovered) {
                                         soundNow()
