@@ -2,6 +2,7 @@ name: Android CI
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -39,31 +40,36 @@ jobs:
           branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           safe_branch=$(printf '%s' "$branch" | sed -E 's/[^a-zA-Z0-9._-]+/-/g; s/^-+//; s/-+$//')
           echo "BUILD_BRANCH=${safe_branch:-unknown}" >> "$GITHUB_ENV"
+          if [[ "$branch" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "VERSION_BRANCH=true" >> "$GITHUB_ENV"
+          else
+            echo "VERSION_BRANCH=false" >> "$GITHUB_ENV"
+          fi
       - name: Prepare versioned APK
         if: success()
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/Pocam-v0.3.0-${{ env.BUILD_BRANCH }}-build-${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/Pocam-${{ env.BUILD_BRANCH }}-rc.${{ github.run_number }}.apk"
       - name: Upload installable APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: pocam-v0.3.0-${{ env.BUILD_BRANCH }}-apk-${{ github.run_number }}
+          name: pocam-${{ env.BUILD_BRANCH }}-apk-${{ github.run_number }}
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish APK to GitHub Releases
-        if: ${{ success() && github.event_name != 'pull_request' && github.ref_type == 'branch' }}
+        if: ${{ success() && github.event_name != 'pull_request' && github.ref_type == 'branch' && env.VERSION_BRANCH == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ci-build-${{ github.run_number }}
-          name: Pocam ${{ env.BUILD_BRANCH }} CI Build #${{ github.run_number }}
+          tag_name: ${{ env.BUILD_BRANCH }}-rc.${{ github.run_number }}
+          name: Pocam ${{ env.BUILD_BRANCH }} Release Candidate #${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           prerelease: true
           generate_release_notes: false
           body: |
             Automated Pocam debug APK for branch ${{ github.ref_name }} built from commit ${{ github.sha }}.
-            For device testing only. Not a production release.
+            Release candidate for device testing. Official stable releases are published separately after approval.
           files: dist/*.apk
           fail_on_unmatched_files: true
