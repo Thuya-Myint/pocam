@@ -198,9 +198,6 @@ class CameraController(private val context: Context) {
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
         .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-        .setResolutionSelector(ResolutionSelector.Builder()
-            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
-            .build())
         .build()
 
     fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
@@ -233,9 +230,10 @@ class CameraController(private val context: Context) {
                     try {
                         if (generation != bindGeneration) return@addListener
                         val extensions = extensionFuture.get()
+                        // Keep ordinary Photo mode on the stable CameraX pipeline.
+                        // OEM HDR extensions can report success at bind time but fail processing.
                         val selectedExtension = if (mode == CameraMode.NIGHT ||
-                            mode == CameraMode.PORTRAIT || mode == CameraMode.PHOTO) extensionMode
-                            else -1
+                            mode == CameraMode.PORTRAIT) extensionMode else -1
                         val selector = if (selectedExtension != -1 &&
                             requestedId == null && extensions.isExtensionAvailable(chosenBase, selectedExtension)) {
                             extensions.getExtensionEnabledCameraSelector(chosenBase, selectedExtension)
@@ -416,8 +414,10 @@ class CameraController(private val context: Context) {
                     onSaved(result.savedUri ?: uri)
                 }
                 override fun onError(exception: ImageCaptureException) {
+                    Log.e("PocamCamera", "ImageCapture failed: code=${exception.imageCaptureError}", exception)
                     context.contentResolver.delete(uri, null, null)
-                    onError(exception.message ?: "Photo capture failed")
+                    onError("Photo capture failed (${exception.imageCaptureError}): " +
+                        (exception.message ?: "Camera processing error"))
                 }
             })
     }
