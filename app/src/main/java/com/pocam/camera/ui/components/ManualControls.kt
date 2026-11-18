@@ -2,6 +2,7 @@ package com.pocam.camera.ui.components
 
 import android.hardware.camera2.CaptureRequest
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -68,9 +69,9 @@ fun ManualControls(controller: CameraController, modifier: Modifier = Modifier) 
                     "Cloud" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT
                 ).filter { it.second in caps.supportedAwbModes }.forEach { (label, mode) ->
                     Text(label, color = if (wb == mode) Color.Cyan else Color.White,
-                        modifier = Modifier.padding(end = 12.dp).then(
-                            Modifier.background(Color(0x663A3A3A), RoundedCornerShape(8.dp))
-                        ).padding(6.dp))
+                        modifier = Modifier.padding(end = 12.dp)
+                            .background(Color(0x663A3A3A), RoundedCornerShape(8.dp))
+                            .clickable { wb = mode; controller.setWhiteBalance(mode) }.padding(6.dp))
                 }
             }
             Button(onClick = {
