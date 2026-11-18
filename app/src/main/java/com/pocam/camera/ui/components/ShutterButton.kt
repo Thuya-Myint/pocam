@@ -39,17 +39,13 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 @Composable
-fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}) {
+fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
     val haptics = LocalHapticFeedback.current
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
     var pressing by remember { mutableStateOf(false) }
     val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh), label = "shutter")
     Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(expanded, modifier = Modifier.offset(y = (-104).dp).zIndex(2f),
-            enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
-            RadialModeWheel(hovered)
-        }
         Box(
             Modifier.zIndex(3f).scale(shutterScale).size(88.dp).border(3.dp, Color.White, CircleShape)
                 .background(Color(0xFF202126), CircleShape)
@@ -75,6 +71,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             onWheelChange(true)
                             hovered = mode
+                            onHoverMode(mode)
                             var pressed = true
                             while (pressed) {
                                 val event = awaitPointerEvent()
@@ -86,12 +83,13 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                     // even when the wheel expands around the outer 264dp box.
                                     val center = Offset(size.width / 2f, size.height / 2f)
                                     val dx = change.position.x - center.x
-                                    val dy = change.position.y - center.y + 104.dp.toPx()
-                                    if (hypot(dx, dy) > size.width * 0.45f) {
+                                    val dy = change.position.y - center.y + 190.dp.toPx()
+                                    if (hypot(dx, dy) > 85.dp.toPx()) {
                                         val degrees = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
                                         val next = wheelModes[(degrees / 60.0).roundToInt() % 6]
                                         if (next != hovered) {
                                             hovered = next
+                                            onHoverMode(next)
                                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
                                     }
