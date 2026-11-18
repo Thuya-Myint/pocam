@@ -13,6 +13,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -37,7 +42,8 @@ import kotlin.math.roundToInt
 fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
-    val shutterScale by animateFloatAsState(if (expanded) 0.85f else 1f, spring(), label = "shutter")
+    var pressing by remember { mutableStateOf(false) }
+    val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(), label = "shutter")
     Box(Modifier.size(264.dp), contentAlignment = Alignment.Center) {
         AnimatedVisibility(expanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
             RadialModeWheel(hovered)
@@ -49,6 +55,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val pointerId = down.id
+                        pressing = true
                         val releasedBeforeHold = withTimeoutOrNull(450L) {
                             var released = false
                             while (!released) {
@@ -58,6 +65,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                             true
                         }
                         if (releasedBeforeHold == true) {
+                            pressing = false
                             onCapture()
                         } else {
                             expanded = true
@@ -82,6 +90,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                 }
                             }
                             expanded = false
+                            pressing = false
                             onWheelChange(false)
                             onModeSelected(hovered)
                         }
