@@ -194,15 +194,17 @@ fun CameraScreen() {
         focusPoint?.let { point ->
             val density = LocalDensity.current
             val reticleSize = with(density) { 64.dp.roundToPx() }
-            val x = with(density) { (maxWidth * point.first).toPx() }
-            val y = with(density) { (maxHeight * point.second).toPx() }
+            val viewWidth = with(density) { maxWidth.toPx() }.toInt()
+            val viewHeight = with(density) { maxHeight.toPx() }.toInt()
+            val x = viewWidth * point.first
+            val y = viewHeight * point.second
             FocusReticle(point.first, point.second,
                 Modifier.offset {
                     IntOffset(
                         (x.toInt() - reticleSize / 2).coerceIn(0,
-                            (size.width - reticleSize).coerceAtLeast(0)),
+                            (viewWidth - reticleSize).coerceAtLeast(0)),
                         (y.toInt() - reticleSize / 2).coerceIn(0,
-                            (size.height - reticleSize).coerceAtLeast(0)))
+                            (viewHeight - reticleSize).coerceAtLeast(0)))
                 })
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
