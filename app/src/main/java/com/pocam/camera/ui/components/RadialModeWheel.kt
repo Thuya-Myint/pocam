@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
@@ -49,16 +50,14 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
         targetRotation -= steps * 60f
     }
     val rotation by animateFloatAsState(targetRotation, spring(stiffness = 260f), label = "mode carousel rotation")
-    Box(modifier.size(252.dp)
-        .background(Color(0xED1B1E26), CircleShape)
-        .border(1.dp, Color.White.copy(alpha = .22f), CircleShape),
+    Box(modifier.requiredSize(252.dp),
         contentAlignment = Alignment.Center) {
         wheelModes.forEachIndexed { index, mode ->
             val angle = Math.toRadians((index * 60 - 90 + rotation).toDouble())
             val x = (88.0 * cos(angle)).toFloat().dp
             val y = (88.0 * sin(angle)).toFloat().dp
             val active = selected == mode
-            val visibility = ((-sin(angle) + 0.2) / 0.85).coerceIn(0.04, 1.0).toFloat()
+            val visibility = ((-sin(angle) + 0.05) / 0.8).coerceIn(0.0, 1.0).toFloat()
             Box(Modifier.offset(x = x, y = y).size(52.dp).alpha(visibility)
                 .background(if (active) accent else Color(0xFF343944), CircleShape)
                 .border(1.dp, if (active) accent else Color.White.copy(alpha = .18f), CircleShape),

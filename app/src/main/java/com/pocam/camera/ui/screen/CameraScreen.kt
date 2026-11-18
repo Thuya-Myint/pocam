@@ -384,8 +384,9 @@ fun CameraScreen() {
         // Single integrated control dock. The shutter has an 88dp footprint,
         // so it no longer pushes the other controls into disconnected positions.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .background(Brush.verticalGradient(
-                listOf(Color(0xF222252D), Color(0xFF101217))),
+            .background(
+                if (wheelOpen) Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                else Brush.verticalGradient(listOf(Color(0xF222252D), Color(0xFF101217))),
                 RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
             .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -405,8 +406,10 @@ fun CameraScreen() {
                 Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
                     tint = if (lastPhoto == null) Color.LightGray else Color.White)
             }
-            Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
+                    // Draw outside the 88dp shutter footprint without expanding the dock.
+                    // The bottom half naturally disappears past the screen edge.
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
                 }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
