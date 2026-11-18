@@ -157,6 +157,7 @@ fun CameraScreen() {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
                     implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
                     controller.bind(owner, this, { error = it }) {
@@ -265,30 +266,55 @@ fun CameraScreen() {
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 112.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 98.dp),
             enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
-            Column(Modifier.shadow(12.dp, RoundedCornerShape(24.dp))
-                .background(Color(0xE91B1E24), RoundedCornerShape(24.dp))
-                .padding(horizontal = 4.dp, vertical = 7.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.shadow(12.dp, RoundedCornerShape(26.dp))
+                .background(Color(0xE91B1E24), RoundedCornerShape(26.dp))
+                .padding(horizontal = 6.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 IconButton(onClick = { showSettings = !showSettings }) {
-                    Icon(Icons.Rounded.Tune, contentDescription = "Viewfinder settings",
-                        tint = Color.White)
+                    Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
+                        tint = if (showSettings) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    gridEnabled = !gridEnabled
+                    preferences.edit().putBoolean("grid", gridEnabled).apply()
+                }) {
+                    Icon(Icons.Rounded.GridOn, contentDescription = "Toggle composition grid",
+                        tint = if (gridEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    if (controller.hasTorch()) {
+                        torchEnabled = !torchEnabled
+                        controller.setTorch(torchEnabled)
+                    }
+                }) {
+                    Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                        contentDescription = "Toggle live torch",
+                        tint = if (torchEnabled) Color(0xFFFFD88C) else Color.White)
+                }
+                IconButton(onClick = {
+                    timerSeconds = when (timerSeconds) { 0 -> 3; 3 -> 5; 5 -> 10; else -> 0 }
+                    preferences.edit().putInt("timer", timerSeconds).apply()
+                }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Rounded.Timer, contentDescription = "Cycle capture timer",
+                            tint = if (timerSeconds > 0) Color(0xFFFFD88C) else Color.White)
+                        if (timerSeconds > 0) Text("${timerSeconds}s",
+                            color = Color(0xFFFFD88C), fontSize = 9.sp)
+                    }
                 }
                 if (mode == CameraMode.PRO) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
-                            contentDescription = "Manual exposure controls", tint = Color.White)
+                            contentDescription = "Pro manual studio", tint = Color(0xFFFFD88C))
                     }
                 }
-                Text(if (gridEnabled) "▦" else "⊞", color = Color.White,
-                    fontSize = 24.sp, modifier = Modifier.clickable {
-                        gridEnabled = !gridEnabled
-                    }.padding(12.dp))
             }
         }
         AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter)
-            .padding(top = 156.dp, start = 12.dp, end = 12.dp),
+            .padding(top = 164.dp, start = 12.dp, end = 12.dp),
             enter = fadeIn(tween(190)) + slideInVertically { -it / 4 },
             exit = fadeOut(tween(130)) + slideOutVertically { -it / 4 }) {
             ViewfinderSettings(
@@ -316,7 +342,7 @@ fun CameraScreen() {
             )
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 150.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 154.dp),
             enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
