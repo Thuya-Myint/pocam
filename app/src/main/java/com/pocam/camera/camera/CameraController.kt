@@ -2,6 +2,11 @@ package com.pocam.camera.camera
 
 import android.content.Context
 import android.net.Uri
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CaptureRequest
+import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -23,6 +28,87 @@ class CameraController(private val context: Context) {
     private var provider: ProcessCameraProvider? = null
     private var camera: Camera? = null
     private var front = false
+    private var manualIso: Int? = null
+    private var manualExposureNs: Long? = null
+    private var manualFocusDiopters: Float? = null
+    private var whiteBalanceMode: Int = CaptureRequest.CONTROL_AWB_MODE_AUTO
+
+    data class ManualCapabilities(
+        val isoRange: IntRange?,
+        val exposureRangeNs: LongRange?,
+        val minFocusDistance: Float,
+        val supportedAwbModes: Set<Int>
+    )
+
+    fun manualCapabilities(): ManualCapabilities? {
+        val info = camera?.cameraInfo ?: return null
+        val chars = Camera2CameraInfo.from(info)
+        val iso = chars.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+        val exposure = chars.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+        val focus = chars.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 0f
+        val modes = chars.getCameraCharacteristic(CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES)
+            ?.toSet() ?: emptySet()
+        val capabilities = chars.getCameraCharacteristic(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+            ?.contains(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR) == true
+        return ManualCapabilities(
+            if (capabilities && iso != null) iso.lower..iso.upper else null,
+            if (capabilities && exposure != null) exposure.lower..exposure.upper else null,
+            focus, modes
+        )
+    }
+
+    fun setManualIso(value: Int?) {
+        manualIso = value
+        applyManual()
+    }
+
+    fun setManualExposureNs(value: Long?) {
+        manualExposureNs = value
+        applyManual()
+    }
+
+    fun setManualFocus(diopters: Float?) {
+        manualFocusDiopters = diopters
+        applyManual()
+    }
+
+    fun setWhiteBalance(mode: Int) {
+        whiteBalanceMode = mode
+        applyManual()
+    }
+
+    fun resetManual() {
+        manualIso = null
+        manualExposureNs = null
+        manualFocusDiopters = null
+        whiteBalanceMode = CaptureRequest.CONTROL_AWB_MODE_AUTO
+        applyManual()
+    }
+
+    private fun applyManual() {
+        val activeCamera = camera ?: return
+        val caps = manualCapabilities() ?: return
+        val builder = CaptureRequestOptions.Builder()
+        val manualSensor = caps.isoRange != null && caps.exposureRangeNs != null &&
+            (manualIso != null || manualExposureNs != null)
+        if (manualSensor) {
+            builder.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+            builder.setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY,
+                (manualIso ?: caps.isoRange!!.first).coerceIn(caps.isoRange!!.first, caps.isoRange.last))
+            builder.setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME,
+                (manualExposureNs ?: 10_000_000L).coerceIn(caps.exposureRangeNs!!.first, caps.exposureRangeNs.last))
+        }
+        if (manualFocusDiopters != null && caps.minFocusDistance > 0f) {
+            builder.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+            builder.setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE,
+                manualFocusDiopters!!.coerceIn(0f, caps.minFocusDistance))
+        }
+        if (whiteBalanceMode in caps.supportedAwbModes) {
+            builder.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, whiteBalanceMode)
+        }
+        Camera2CameraControl.from(activeCamera.cameraControl).setCaptureRequestOptions(builder.build())
+    }
+
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
@@ -38,6 +124,7 @@ class CameraController(private val context: Context) {
                 camera = cameraProvider.bindToLifecycle(owner, selector, preview, capture)
                 provider = cameraProvider
                 setZoom(zoom)
+                applyManual()
             } catch (e: Exception) {
                 onError(e.message ?: "Unable to start camera")
             }
@@ -47,6 +134,7 @@ class CameraController(private val context: Context) {
     fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit) {
         front = !front
         zoom = 1f
+        resetManual()
         bind(owner, view, onError)
     }
 
