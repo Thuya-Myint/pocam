@@ -20,6 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +40,11 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val accent = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
+        else Color(0xFFFFD88C)
+    }
     var caps by remember { mutableStateOf<CameraController.ManualCapabilities?>(null) }
     var isoFraction by remember { mutableFloatStateOf(0f) }
     var shutterFraction by remember { mutableFloatStateOf(0f) }
@@ -53,7 +61,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
         .background(Color(0xFF292D36), RoundedCornerShape(20.dp))
         .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("EXPOSURE  /  FOCUS  /  COLOR", color = Color(0xFFFFD88C),
+        Text("EXPOSURE  /  FOCUS  /  COLOR", color = accent,
             fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Button(onClick = { caps = controller.manualCapabilities() },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
@@ -69,8 +77,8 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     isoFraction).roundToInt().coerceIn(isoRange)
                 Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
                 Slider(value = isoFraction, valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
-                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
+                    colors = SliderDefaults.colors(thumbColor = accent,
+                        activeTrackColor = accent), onValueChange = {
                     isoFraction = it
                     controller.setManualIso(if (it == 0f) null else isoValueFor(isoRange, it))
                 })
@@ -81,8 +89,8 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     else "Shutter: ${"%.1f".format(selectedNs / 1_000_000.0)} ms",
                     color = Color.White)
                 Slider(value = shutterFraction, valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
-                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
+                    colors = SliderDefaults.colors(thumbColor = accent,
+                        activeTrackColor = accent), onValueChange = {
                     shutterFraction = it
                     controller.setManualExposureNs(
                         if (it == 0f) null else shutterNs(minNs, maxNs, it))
@@ -95,8 +103,8 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     else "Focus: ${"%.2f".format(focusFraction * current.minFocusDistance)} D",
                     color = Color.White)
                 Slider(value = focusFraction,
-                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
-                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
+                    colors = SliderDefaults.colors(thumbColor = accent,
+                        activeTrackColor = accent), onValueChange = {
                     focusFraction = it
                     controller.setManualFocus(if (it == 0f) null else
                         it * current.minFocusDistance)
@@ -109,7 +117,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     "Cloud" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT)
                     .filter { it.second in current.supportedAwbModes }
                     .forEach { (label, value) ->
-                        Text(label, color = if (wb == value) Color(0xFFFFD88C) else Color.White,
+                        Text(label, color = if (wb == value) accent else Color.White,
                             modifier = Modifier.background(Color(0x663A3A3A),
                                 RoundedCornerShape(12.dp))
                                 .clickable { wb = value; controller.setWhiteBalance(value) }
