@@ -6,6 +6,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pocam.camera.domain.model.CameraMode
 import kotlin.math.PI
 import kotlin.math.cos
@@ -43,8 +45,12 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
                     .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(modeSymbol(mode), color = if (active) Color.Black else Color.White,
-                    fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(modeSymbol(mode), color = if (active) Color.Black else Color.White,
+                        fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                    Text(mode.name.take(5), color = if (active) Color.Black else Color.White,
+                        fontSize = 7.sp)
+                }
             }
         }
     }
