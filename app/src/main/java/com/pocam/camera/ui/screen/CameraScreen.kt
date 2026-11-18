@@ -1,6 +1,8 @@
 package com.pocam.camera.ui.screen
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.widget.Toast
 import android.view.MotionEvent
@@ -60,6 +62,7 @@ fun CameraScreen() {
     var exposureIndex by remember { mutableStateOf(0) }
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
+    var lastPhoto by remember { mutableStateOf<Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permitted = it
@@ -93,6 +96,21 @@ fun CameraScreen() {
         Text("pocam.", color = Color.White,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
         PerformanceHud(Modifier.align(Alignment.TopEnd).padding(20.dp))
+        lastPhoto?.let { uri ->
+            Text("View last photo", color = Color.White,
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 54.dp)
+                    .background(Color(0xAA25262A), CircleShape)
+                    .clickable {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "image/jpeg")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            })
+                        } catch (exception: Exception) {
+                            error = "No photo viewer available"
+                        }
+                    }.padding(10.dp))
+        }
         Text(modeSymbol(mode), color = Color.White,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 34.dp))
         Row(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 110.dp),
@@ -142,7 +160,10 @@ fun CameraScreen() {
                 onCapture = {
                     if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
                         controller.takePhoto(
-                            onSaved = { Toast.makeText(context, "Saved: $it", Toast.LENGTH_SHORT).show() },
+                            onSaved = { uri ->
+                                lastPhoto = uri
+                                Toast.makeText(context, "Saved to Pocam photos", Toast.LENGTH_SHORT).show()
+                            },
                             onError = { error = it })
                     } else {
                         Toast.makeText(context, "${mode.name} coming soon", Toast.LENGTH_SHORT).show()
