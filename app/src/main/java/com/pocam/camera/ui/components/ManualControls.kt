@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,11 +30,17 @@ import kotlin.math.ln
 import kotlin.math.roundToInt
 
 @Composable
-fun ManualControls(controller: CameraController, modifier: Modifier = Modifier) {
+fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier: Modifier = Modifier) {
     var caps by remember { mutableStateOf<CameraController.ManualCapabilities?>(null) }
     var isoFraction by remember { mutableFloatStateOf(0f) }
     var shutterFraction by remember { mutableFloatStateOf(0f) }
     var focusFraction by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(cameraGeneration) {
+        caps = controller.manualCapabilities()
+        isoFraction = 0f
+        shutterFraction = 0f
+        focusFraction = 0f
+    }
     var wb by remember { mutableStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO) }
 
     Column(modifier.width(220.dp)
