@@ -6,7 +6,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import com.pocam.camera.ui.components.CameraGrid
 import com.pocam.camera.ui.components.ZoomRail
 import com.pocam.camera.ui.components.CaptureFlash
@@ -425,15 +424,20 @@ fun CameraScreen() {
                                 }
                                 countdown = null
                                 countdownJob = null
-                                captureFlash = true
                                 controller.takePhoto(
                                 onSaved = { uri ->
+                                    captureFlash = true
                                     captureBusy = false
                                     lastPhoto = uri
                                     Toast.makeText(context, "Saved to Pocam photos",
                                         Toast.LENGTH_SHORT).show()
                                 },
-                                onError = { captureBusy = false; error = it })
+                                onError = {
+                                    countdown = null
+                                    countdownJob = null
+                                    captureBusy = false
+                                    error = it
+                                })
                             }
                         } else {
                             Toast.makeText(context, "${mode.name} coming soon",
