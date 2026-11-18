@@ -17,6 +17,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,12 +45,13 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
     var hovered by remember { mutableStateOf(mode) }
     var pressing by remember { mutableStateOf(false) }
     val shutterScale by animateFloatAsState(if (expanded) 0.88f else if (pressing) 0.94f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh), label = "shutter")
-    Box(Modifier.size(264.dp), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(expanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+    Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
+        AnimatedVisibility(expanded, modifier = Modifier.offset(y = (-104).dp).zIndex(2f),
+            enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
             RadialModeWheel(hovered)
         }
         Box(
-            Modifier.scale(shutterScale).size(88.dp).border(3.dp, Color.White, CircleShape)
+            Modifier.zIndex(3f).scale(shutterScale).size(88.dp).border(3.dp, Color.White, CircleShape)
                 .background(Color(0xFF202126), CircleShape)
                 .pointerInput(mode) {
                     awaitEachGesture {
@@ -83,7 +86,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                     // even when the wheel expands around the outer 264dp box.
                                     val center = Offset(size.width / 2f, size.height / 2f)
                                     val dx = change.position.x - center.x
-                                    val dy = change.position.y - center.y
+                                    val dy = change.position.y - center.y + 104.dp.toPx()
                                     if (hypot(dx, dy) > size.width * 0.45f) {
                                         val degrees = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
                                         val next = wheelModes[(degrees / 60.0).roundToInt() % 6]
