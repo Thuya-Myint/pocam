@@ -110,7 +110,6 @@ class CameraController(private val context: Context) {
         if (whiteBalanceMode in caps.supportedAwbModes) {
             builder.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, whiteBalanceMode)
         }
-        Camera2CameraControl.from(activeCamera.cameraControl).clearCaptureRequestOptions()
         Camera2CameraControl.from(activeCamera.cameraControl).setCaptureRequestOptions(builder.build())
     }
 
@@ -179,6 +178,10 @@ class CameraController(private val context: Context) {
     fun takePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
         val name = "POCAM_" +
             SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date()) + ".jpg"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            saveLegacyPhoto(name, onSaved, onError)
+            return
+        }
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
@@ -201,6 +204,23 @@ class CameraController(private val context: Context) {
                 }
                 override fun onError(exception: ImageCaptureException) {
                     context.contentResolver.delete(uri, null, null)
+                    onError(exception.message ?: "Photo capture failed")
+                }
+            })
+    }
+
+    private fun saveLegacyPhoto(name: String, onSaved: (Uri) -> Unit,
+                                onError: (String) -> Unit) {
+        val dir = context.getExternalFilesDir("Pictures") ?: context.filesDir
+        if (!dir.exists()) dir.mkdirs()
+        val file = File(dir, name)
+        capture.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(),
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(result: ImageCapture.OutputFileResults) {
+                    onSaved(result.savedUri ?: Uri.fromFile(file))
+                }
+                override fun onError(exception: ImageCaptureException) {
                     onError(exception.message ?: "Photo capture failed")
                 }
             })
