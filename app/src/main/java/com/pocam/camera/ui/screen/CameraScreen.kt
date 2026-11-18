@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import com.pocam.camera.ui.components.modeSymbol
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ fun CameraScreen() {
     }
     var mode by remember { mutableStateOf(CameraMode.PHOTO) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    var cameraGeneration by remember { mutableStateOf(0) }
     var exposureIndex by remember { mutableStateOf(0) }
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
@@ -74,7 +76,10 @@ fun CameraScreen() {
                 PreviewView(ctx).apply {
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
-                    controller.bind(owner, this) { error = it }
+                    controller.bind(owner, this, { error = it }) {
+                        cameraGeneration++
+                        exposureRange = controller.exposureRange()
+                    }
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
                             controller.focusAt(this, event.x, event.y)
@@ -101,7 +106,7 @@ fun CameraScreen() {
             }
         }
         if (mode == CameraMode.PRO) {
-            Column(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
+            Column(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).heightIn(max = 520.dp)
                 .background(Color(0xCC25262A), androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
                 .padding(12.dp)) {
                 Text("EXPOSURE", color = Color.White)
@@ -120,13 +125,17 @@ fun CameraScreen() {
                     modifier = Modifier.width(150.dp)
                 )
                 Text("Tap preview to focus", color = Color.LightGray)
-                ManualControls(controller)
+                ManualControls(controller, cameraGeneration)
             }
         }
         Text("⟳", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
             .padding(end = 22.dp, bottom = 124.dp)
             .background(Color(0xCC25262A), CircleShape)
-            .clickable { previewView?.let { controller.flip(owner, it) { message -> error = message }; zoom = 1f } }
+            .clickable { previewView?.let { controller.flip(owner, it, { message -> error = message }) {
+                cameraGeneration++
+                exposureRange = controller.exposureRange()
+                exposureIndex = 0
+            }; zoom = 1f } }
             .padding(14.dp))
         Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
             ShutterButton(mode = mode,
