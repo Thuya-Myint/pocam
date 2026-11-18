@@ -230,7 +230,7 @@ fun CameraScreen() {
 
         // Minimal floating header: no opaque bar, no second toolbar.
         Row(Modifier.align(Alignment.TopCenter).zIndex(12f).fillMaxWidth()
-            .statusBarsPadding().padding(start = 18.dp, end = 18.dp, top = 20.dp),
+            .statusBarsPadding().padding(start = 18.dp, end = 18.dp, top = 40.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Column {
@@ -275,14 +275,14 @@ fun CameraScreen() {
             }
         }
         if (!wheelOpen) {
-            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 86.dp)
+            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 106.dp)
                 .background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             if (mode == CameraMode.PRO) {
-                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 88.dp, end = 18.dp)
+                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 108.dp, end = 18.dp)
                     .background(Color(0x88303842), CircleShape)) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
@@ -293,7 +293,7 @@ fun CameraScreen() {
         }
         if (showSettings && !wheelOpen) {
             Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
-                .statusBarsPadding().padding(top = 132.dp, start = 12.dp, end = 12.dp)
+                .statusBarsPadding().padding(top = 152.dp, start = 12.dp, end = 12.dp)
                 .heightIn(max = (availableHeight - 310.dp).coerceAtLeast(180.dp))
                 .verticalScroll(rememberScrollState())) {
             ViewfinderSettings(
