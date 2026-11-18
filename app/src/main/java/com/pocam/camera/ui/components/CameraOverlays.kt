@@ -10,10 +10,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -56,7 +65,10 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 
 @Composable
 fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
+    var dragAccumulated by remember { mutableFloatStateOf(0f) }
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
         .padding(horizontal = 5.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically) {
@@ -71,6 +83,28 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
                     fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+    Row(Modifier.width(150.dp).height(20.dp)
+        .pointerInput(selected) {
+            detectHorizontalDragGestures(
+                onDragStart = { dragAccumulated = 0f },
+                onDragEnd = { dragAccumulated = 0f },
+                onHorizontalDrag = { change, amount ->
+                    change.consume()
+                    dragAccumulated += amount
+                    if (kotlin.math.abs(dragAccumulated) > 28.dp.toPx()) {
+                        val values = listOf(1f, 2f, 4f)
+                        val current = values.indexOf(selected).coerceAtLeast(0)
+                        val direction = if (dragAccumulated > 0f) 1 else -1
+                        onSelect(values[(current + direction).coerceIn(0, values.lastIndex)])
+                        dragAccumulated = 0f
+                    }
+                })
+        }, horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically) {
+        Text("SWIPE TO ZOOM", color = Color.White.copy(alpha = .8f),
+            fontSize = 9.sp, letterSpacing = 1.sp)
+    }
     }
 }
 
