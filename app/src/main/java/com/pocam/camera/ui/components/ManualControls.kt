@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,7 +55,9 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("EXPOSURE  /  FOCUS  /  COLOR", color = Color(0xFFFFD88C),
             fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        Button(onClick = { caps = controller.manualCapabilities() }) {
+        Button(onClick = { caps = controller.manualCapabilities() },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
+                contentColor = Color.White)) {
             Text(if (caps == null) "Detect camera controls" else "Refresh sensor capabilities")
         }
         val current = caps
@@ -62,7 +68,9 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 val isoValue = (isoRange.first + (isoRange.last - isoRange.first) *
                     isoFraction).roundToInt().coerceIn(isoRange)
                 Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
-                Slider(value = isoFraction, valueRange = 0f..1f, onValueChange = {
+                Slider(value = isoFraction, valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
+                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
                     isoFraction = it
                     controller.setManualIso(if (it == 0f) null else isoValueFor(isoRange, it))
                 })
@@ -72,7 +80,9 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 Text(if (shutterFraction == 0f) "Shutter: AUTO"
                     else "Shutter: ${"%.1f".format(selectedNs / 1_000_000.0)} ms",
                     color = Color.White)
-                Slider(value = shutterFraction, valueRange = 0f..1f, onValueChange = {
+                Slider(value = shutterFraction, valueRange = 0f..1f,
+                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
+                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
                     shutterFraction = it
                     controller.setManualExposureNs(
                         if (it == 0f) null else shutterNs(minNs, maxNs, it))
@@ -84,7 +94,9 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 Text(if (focusFraction == 0f) "Focus: AUTO"
                     else "Focus: ${"%.2f".format(focusFraction * current.minFocusDistance)} D",
                     color = Color.White)
-                Slider(value = focusFraction, onValueChange = {
+                Slider(value = focusFraction,
+                    colors = SliderDefaults.colors(thumbColor = Color(0xFFFFD88C),
+                        activeTrackColor = Color(0xFFFFD88C)), onValueChange = {
                     focusFraction = it
                     controller.setManualFocus(if (it == 0f) null else
                         it * current.minFocusDistance)
@@ -104,7 +116,8 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                                 .padding(horizontal = 12.dp, vertical = 8.dp))
                     }
             }
-            Button(onClick = {
+            Button(colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
+                contentColor = Color.White), onClick = {
                 isoFraction = 0f; shutterFraction = 0f; focusFraction = 0f
                 wb = CaptureRequest.CONTROL_AWB_MODE_AUTO
                 controller.resetManual()
