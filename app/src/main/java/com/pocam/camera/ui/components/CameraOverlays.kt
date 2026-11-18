@@ -56,19 +56,19 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 
 @Composable
 fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.background(Color(0xDB15171C), RoundedCornerShape(30.dp))
-        .padding(horizontal = 6.dp, vertical = 5.dp),
+    Row(modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
+        .padding(horizontal = 5.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         listOf(1f, 2f, 4f).forEach { value ->
             val active = value == selected
-            val scale by animateFloatAsState(if (active) 1.08f else 1f,
+            val scale by animateFloatAsState(if (active) 1.04f else 1f,
                 tween(180, easing = FastOutSlowInEasing), label = "zoom pill")
-            Box(Modifier.size(43.dp).scale(scale)
-                .background(if (active) Color.White else Color.Transparent, CircleShape)
+            Box(Modifier.size(38.dp).scale(scale)
+                .background(if (active) Color(0xFFFFD88C) else Color.Transparent, CircleShape)
                 .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
                 Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
