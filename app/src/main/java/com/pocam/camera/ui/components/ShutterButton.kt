@@ -84,7 +84,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                     val center = Offset(size.width / 2f, size.height / 2f)
                                     val dx = change.position.x - center.x
                                     val dy = change.position.y - center.y + 190.dp.toPx()
-                                    if (hypot(dx, dy) > 85.dp.toPx()) {
+                                    if (hypot(dx, change.position.y - center.y) > 35.dp.toPx()) {
                                         val degrees = (atan2(dy, dx) * 180.0 / PI + 90.0 + 360.0) % 360.0
                                         val next = wheelModes[(degrees / 60.0).roundToInt() % 6]
                                         if (next != hovered) {
