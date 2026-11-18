@@ -27,6 +27,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.MeteringPointFactory
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -285,6 +286,29 @@ class CameraController(private val context: Context) {
         val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
             .setAutoCancelDuration(3, TimeUnit.SECONDS).build()
         camera?.cameraControl?.startFocusAndMetering(action)
+    }
+
+    // Request a center autofocus pass before capture, but do not block shooting
+    // if the device reports unsupported AF or the focus future fails.
+    fun focusThenTakePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
+        val activeCamera = camera
+        if (activeCamera == null) {
+            onError("Camera is not ready")
+            return
+        }
+        val point = SurfaceOrientedMeteringPointFactory(1f, 1f).createPoint(.5f, .5f)
+        val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+            .setAutoCancelDuration(3, TimeUnit.SECONDS).build()
+        try {
+            val future = activeCamera.cameraControl.startFocusAndMetering(action)
+            future.addListener({
+                // A completed AF attempt is not proof of focus lock; capture
+                // regardless to avoid indefinite shutter delays on fixed-focus lenses.
+                takePhoto(onSaved, onError)
+            }, ContextCompat.getMainExecutor(context))
+        } catch (_: Exception) {
+            takePhoto(onSaved, onError)
+        }
     }
 
     fun takePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {

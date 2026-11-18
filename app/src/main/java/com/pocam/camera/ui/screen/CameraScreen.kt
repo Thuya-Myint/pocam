@@ -227,78 +227,72 @@ fun CameraScreen() {
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
 
-        // Dark gradient keeps the viewfinder immersive without opaque header bars.
-        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color(0xED0C0E13), Color(0x9D101218))))
-            .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 22.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween) {
+        // Minimal floating header: no opaque bar, no second toolbar.
+        Row(Modifier.align(Alignment.TopCenter).zIndex(12f).fillMaxWidth()
+            .padding(start = 18.dp, end = 18.dp, top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("pocam.", color = Color.White, fontSize = 28.sp,
+                Text("pocam.", color = Color.White, fontSize = 23.sp,
                     fontWeight = FontWeight.Bold)
-                Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
-                    letterSpacing = 2.sp)
+                Text("POCKET CAMERA", color = Color.White.copy(alpha = .76f),
+                    fontSize = 8.sp, letterSpacing = 1.6.sp)
             }
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(mode.name,
-                    color = accent, fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                if (performanceEnabled) PerformanceHud()
+            if (!wheelOpen) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        IconButton(onClick = {
+                            if (controller.hasTorch()) {
+                                torchEnabled = !torchEnabled
+                                controller.setTorch(torchEnabled)
+                            }
+                        }) {
+                            Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                                contentDescription = "Toggle torch", tint = if (torchEnabled) accent else Color.White)
+                        }
+                    }
+                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        IconButton(onClick = {
+                            gridEnabled = !gridEnabled
+                            preferences.edit().putBoolean("grid", gridEnabled).apply()
+                        }) {
+                            Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
+                                tint = if (gridEnabled) accent else Color.White)
+                        }
+                    }
+                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        IconButton(onClick = { showSettings = !showSettings }) {
+                            Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
+                                tint = if (showSettings) accent else Color.White)
+                        }
+                    }
+                }
             }
         }
-        // Settings live in a vertical toolbar, not stacked over the branding.
         if (!wheelOpen) {
-            Box(Modifier.align(Alignment.TopCenter).padding(top = 98.dp).zIndex(12f)) {
-            Row(Modifier.shadow(12.dp, RoundedCornerShape(26.dp))
-                .background(Color(0xE91B1E24), RoundedCornerShape(26.dp))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                IconButton(onClick = { showSettings = !showSettings }) {
-                    Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
-                        tint = if (showSettings) accent else Color.White)
-                }
-                IconButton(onClick = {
-                    gridEnabled = !gridEnabled
-                    preferences.edit().putBoolean("grid", gridEnabled).apply()
-                }) {
-                    Icon(Icons.Rounded.GridOn, contentDescription = "Toggle composition grid",
-                        tint = if (gridEnabled) accent else Color.White)
-                }
-                IconButton(onClick = {
-                    if (controller.hasTorch()) {
-                        torchEnabled = !torchEnabled
-                        controller.setTorch(torchEnabled)
-                    }
-                }) {
-                    Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
-                        contentDescription = "Toggle live torch",
-                        tint = if (torchEnabled) accent else Color.White)
-                }
-                IconButton(onClick = {
-                    timerSeconds = when (timerSeconds) { 0 -> 3; 3 -> 5; 5 -> 10; else -> 0 }
-                    preferences.edit().putInt("timer", timerSeconds).apply()
-                }) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Rounded.Timer, contentDescription = "Cycle capture timer",
-                            tint = if (timerSeconds > 0) accent else Color.White)
-                        if (timerSeconds > 0) Text("${timerSeconds}s",
-                            color = accent, fontSize = 9.sp)
-                    }
-                }
-                if (mode == CameraMode.PRO) {
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 78.dp)
+                .background(Color(0x77303842), CircleShape)
+                .padding(horizontal = 13.dp, vertical = 5.dp)) {
+                Text(mode.name, color = accent, fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+            if (mode == CameraMode.PRO) {
+                Box(Modifier.align(Alignment.TopEnd).padding(top = 80.dp, end = 18.dp)
+                    .background(Color(0x88303842), CircleShape)) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
-                            contentDescription = "Pro manual studio", tint = accent)
+                            contentDescription = "Pro controls", tint = accent)
                     }
                 }
-            }
             }
         }
         if (showSettings && !wheelOpen) {
             Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
-                .padding(top = 164.dp, start = 12.dp, end = 12.dp)
+                .padding(top = 124.dp, start = 12.dp, end = 12.dp)
                 .heightIn(max = (availableHeight - 310.dp).coerceAtLeast(180.dp))
                 .verticalScroll(rememberScrollState())) {
             ViewfinderSettings(
@@ -428,7 +422,7 @@ fun CameraScreen() {
                                 }
                                 countdown = null
                                 countdownJob = null
-                                controller.takePhoto(
+                                controller.focusThenTakePhoto(
                                 onSaved = { uri ->
                                     captureFlash = true
                                     captureBusy = false
