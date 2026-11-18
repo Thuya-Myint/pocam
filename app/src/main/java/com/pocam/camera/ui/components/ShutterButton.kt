@@ -34,7 +34,7 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 @Composable
-fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit) {
+fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     var hovered by remember { mutableStateOf(mode) }
     val shutterScale by animateFloatAsState(if (expanded) 0.85f else 1f, spring(), label = "shutter")
@@ -61,6 +61,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                             onCapture()
                         } else {
                             expanded = true
+                            onWheelChange(true)
                             hovered = mode
                             var pressed = true
                             while (pressed) {
@@ -81,6 +82,7 @@ fun ShutterButton(mode: CameraMode, onCapture: () -> Unit, onModeSelected: (Came
                                 }
                             }
                             expanded = false
+                            onWheelChange(false)
                             onModeSelected(hovered)
                         }
                     }
