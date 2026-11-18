@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
@@ -41,13 +45,14 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
     }
     var wb by remember { mutableStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO) }
 
-    Column(modifier.width(220.dp)
-        .background(Color(0xE6202126), RoundedCornerShape(16.dp))
-        .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("PRO CONTROLS", color = Color.White)
+    Column(modifier.fillMaxWidth()
+        .background(Color(0xFF292D36), RoundedCornerShape(20.dp))
+        .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("EXPOSURE  /  FOCUS  /  COLOR", color = Color(0xFFFFD88C),
+            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Button(onClick = { caps = controller.manualCapabilities() }) {
-            Text(if (caps == null) "Load controls" else "Refresh capabilities")
+            Text(if (caps == null) "Detect camera controls" else "Refresh sensor capabilities")
         }
         val current = caps
         if (current != null) {
@@ -92,11 +97,11 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     "Cloud" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT)
                     .filter { it.second in current.supportedAwbModes }
                     .forEach { (label, value) ->
-                        Text(label, color = if (wb == value) Color.Cyan else Color.White,
+                        Text(label, color = if (wb == value) Color(0xFFFFD88C) else Color.White,
                             modifier = Modifier.background(Color(0x663A3A3A),
-                                RoundedCornerShape(6.dp))
+                                RoundedCornerShape(12.dp))
                                 .clickable { wb = value; controller.setWhiteBalance(value) }
-                                .padding(5.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp))
                     }
             }
             Button(onClick = {
