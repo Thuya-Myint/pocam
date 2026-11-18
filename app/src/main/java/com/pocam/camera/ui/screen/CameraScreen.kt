@@ -5,6 +5,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import com.pocam.camera.ui.components.CameraGrid
 import com.pocam.camera.ui.components.ZoomRail
 import com.pocam.camera.ui.components.CaptureFlash
@@ -119,6 +121,7 @@ fun CameraScreen() {
     val scope = rememberCoroutineScope()
     var captureBusy by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf<Int?>(null) }
+    var countdownJob by remember { mutableStateOf<Job?>(null) }
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
     var torchEnabled by remember { mutableStateOf(false) }
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
@@ -413,7 +416,7 @@ fun CameraScreen() {
                         if (captureBusy) return@ShutterButton
                         if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
                             captureBusy = true
-                            scope.launch {
+                            countdownJob = scope.launch {
                                 if (timerSeconds > 0) {
                                     for (remaining in timerSeconds downTo 1) {
                                         countdown = remaining
@@ -421,6 +424,7 @@ fun CameraScreen() {
                                     }
                                 }
                                 countdown = null
+                                countdownJob = null
                                 captureFlash = true
                                 controller.takePhoto(
                                 onSaved = { uri ->
@@ -480,8 +484,18 @@ fun CameraScreen() {
             Box(Modifier.align(Alignment.Center)
                 .background(Color(0xBB111319), CircleShape).size(110.dp),
                 contentAlignment = Alignment.Center) {
-                Text("$remaining", color = Color.White, fontSize = 60.sp,
-                    fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$remaining", color = Color.White, fontSize = 52.sp,
+                        fontWeight = FontWeight.Bold)
+                    Text("CANCEL", color = Color.White, fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            countdownJob?.cancel()
+                            countdownJob = null
+                            countdown = null
+                            captureBusy = false
+                        }.padding(horizontal = 10.dp, vertical = 5.dp))
+                }
             }
         }
         error?.let {
