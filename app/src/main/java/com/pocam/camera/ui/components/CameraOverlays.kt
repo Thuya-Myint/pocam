@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -76,6 +77,6 @@ fun ZoomRail(selected: Float, onSelect: (Float) -> Unit, modifier: Modifier = Mo
 fun CaptureFlash(active: Boolean, modifier: Modifier = Modifier) {
     AnimatedVisibility(active, modifier = modifier, enter = fadeIn(tween(45)),
         exit = fadeOut(tween(240))) {
-        Box(Modifier.background(Color.White.copy(alpha = .70f)))
+        Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = .70f)))
     }
 }
