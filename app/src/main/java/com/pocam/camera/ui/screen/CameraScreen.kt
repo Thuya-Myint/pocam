@@ -1,23 +1,9 @@
 package com.pocam.camera.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.matchParentSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.delay
 import com.pocam.camera.ui.components.CameraGrid
 import com.pocam.camera.ui.components.ZoomRail
