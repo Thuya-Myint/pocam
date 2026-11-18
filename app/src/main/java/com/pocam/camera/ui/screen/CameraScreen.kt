@@ -52,6 +52,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
@@ -128,7 +132,7 @@ fun CameraScreen() {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()) {
         val availableHeight = maxHeight
-        val proMaxHeight = (availableHeight - 250.dp).coerceAtLeast(120.dp)
+        val proMaxHeight = (availableHeight - 260.dp).coerceAtLeast(120.dp)
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -164,14 +168,14 @@ fun CameraScreen() {
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
 
-        // Original Pocam concept: minimal brand and a discreet performance capsule.
+        // Dark gradient keeps the viewfinder immersive without opaque header bars.
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-            .background(Color(0xA9121419))
-            .padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+            .background(Brush.verticalGradient(listOf(Color(0xED0C0E13), Color(0x9D101218))))
+            .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text("pocam.", color = Color.White, fontSize = 24.sp,
+                Text("pocam.", color = Color.White, fontSize = 28.sp,
                     fontWeight = FontWeight.Bold)
                 Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
                     letterSpacing = 2.sp)
@@ -180,9 +184,10 @@ fun CameraScreen() {
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 10.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 112.dp),
             enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
-            Column(Modifier.background(Color(0xA91B1E24), RoundedCornerShape(26.dp))
+            Column(Modifier.shadow(12.dp, RoundedCornerShape(24.dp))
+                .background(Color(0xE91B1E24), RoundedCornerShape(24.dp))
                 .padding(horizontal = 4.dp, vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { showSettings = !showSettings }) {
@@ -219,7 +224,7 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 174.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 132.dp),
             enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -236,7 +241,7 @@ fun CameraScreen() {
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 82.dp, bottom = 168.dp),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, top = 96.dp, bottom = 140.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
             Column(Modifier.heightIn(max = proMaxHeight)
@@ -269,8 +274,9 @@ fun CameraScreen() {
         // The 264dp gesture area is intentionally centered in an overlay.
         // The gallery and flip buttons align with its central shutter, not its outer bounds.
         Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .background(Color(0xD817191F), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(Brush.verticalGradient(listOf(Color(0xF321242C), Color(0xFF101217))),
+                RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+            .padding(horizontal = 26.dp, vertical = 30.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
@@ -301,7 +307,7 @@ fun CameraScreen() {
                     tint = Color.White)
             }
         }
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 0.dp),
+        Box(Modifier.align(Alignment.BottomCenter).offset(y = 72.dp),
             contentAlignment = Alignment.Center) {
                 ShutterButton(mode = mode,
                     onCapture = {
