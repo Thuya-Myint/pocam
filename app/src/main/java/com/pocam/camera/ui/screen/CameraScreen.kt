@@ -323,32 +323,6 @@ fun CameraScreen() {
                 .padding(bottom = 144.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                    .background(Color(0xE91B1F27), RoundedCornerShape(24.dp))
-                    .padding(horizontal = 7.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    listOf(CameraMode.PORTRAIT, CameraMode.PHOTO, CameraMode.PRO,
-                        CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.MORE).forEach { target ->
-                        val active = mode == target
-                        Text(target.name.take(5), fontSize = 10.sp, letterSpacing = .3.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (active) Color(0xFF15171C) else Color.White,
-                            modifier = Modifier
-                                .background(if (active) accent else Color.Transparent,
-                                    RoundedCornerShape(16.dp))
-                                .clickable(enabled = !captureBusy) {
-                                    if (mode == CameraMode.PRO && target != CameraMode.PRO) {
-                                        controller.resetManual()
-                                        showProPanel = false
-                                    }
-                                    mode = target
-                                    showProPanel = target == CameraMode.PRO
-                                    showSettings = false
-                                }
-                                .padding(horizontal = 9.dp, vertical = 9.dp))
-                    }
-                }
                 ZoomRail(zoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
