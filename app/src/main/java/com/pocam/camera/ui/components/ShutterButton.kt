@@ -13,11 +13,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.consume
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
