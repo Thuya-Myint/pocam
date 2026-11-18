@@ -172,7 +172,7 @@ fun CameraScreen() {
     }
     DisposableEffect(controller, tones) { onDispose { controller.release(); tones.release() } }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).navigationBarsPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val availableHeight = maxHeight
         val proMaxHeight = (availableHeight - 260.dp).coerceAtLeast(120.dp)
         if (permitted) {
@@ -329,7 +329,7 @@ fun CameraScreen() {
         // Shooting controls are always reachable and drawn above the preview.
         if (!wheelOpen && !showProPanel && !showSettings) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 144.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 126.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZoomRail(zoom, maxZoom = maxZoom, onSelect = { value ->
@@ -347,7 +347,7 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !wheelOpen && !showSettings,
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 144.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 126.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
             Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight.coerceAtMost(350.dp))
@@ -381,14 +381,10 @@ fun CameraScreen() {
             }
         }
 
-        // Single integrated control dock. The shutter has an 88dp footprint,
-        // so it no longer pushes the other controls into disconnected positions.
+        // Transparent floating controls over the edge-to-edge camera preview.
+        // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .background(
-                if (wheelOpen) Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-                else Brush.verticalGradient(listOf(Color(0xF222252D), Color(0xFF101217))),
-                RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-            .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 18.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp)
