@@ -64,6 +64,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.scaleIn
@@ -211,7 +212,7 @@ fun CameraScreen() {
             }
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(if (mode == CameraMode.PRO) "PRO" else "PHOTO",
+                Text(mode.name,
                     color = Color(0xFFFFD88C), fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 if (performanceEnabled) PerformanceHud()
@@ -219,7 +220,7 @@ fun CameraScreen() {
         }
         // Settings live in a vertical toolbar, not stacked over the branding.
         AnimatedVisibility(!wheelOpen,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 98.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 98.dp).zIndex(12f),
             enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
             Row(Modifier.shadow(12.dp, RoundedCornerShape(26.dp))
                 .background(Color(0xE91B1E24), RoundedCornerShape(26.dp))
@@ -267,12 +268,12 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(wheelOpen,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 246.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 206.dp).zIndex(20f),
             enter = fadeIn(tween(140)) + scaleIn(initialScale = 0.78f),
             exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.78f)) {
             RadialModeWheel(wheelHover)
         }
-        AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter)
+        AnimatedVisibility(showSettings, modifier = Modifier.align(Alignment.TopCenter).zIndex(15f)
             .padding(top = 164.dp, start = 12.dp, end = 12.dp),
             enter = fadeIn(tween(190)) + slideInVertically { -it / 4 },
             exit = fadeOut(tween(130)) + slideOutVertically { -it / 4 }) {
@@ -300,21 +301,27 @@ fun CameraScreen() {
                 onClose = { showSettings = false }
             )
         }
+        // Shooting controls are always reachable and drawn above the preview.
         AnimatedVisibility(!wheelOpen && !showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 154.dp),
-            enter = fadeIn(tween(180)), exit = fadeOut(tween(100))) {
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(12f)
+                .padding(bottom = 146.dp),
+            enter = fadeIn(tween(180)) + slideInVertically { it / 5 },
+            exit = fadeOut(tween(120)) + slideOutVertically { it / 5 }) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.background(Color(0xD921242C), RoundedCornerShape(24.dp))
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(CameraMode.PHOTO, CameraMode.PRO, CameraMode.VIDEO).forEach { target ->
-                        Text(target.name, fontSize = 10.sp, letterSpacing = 1.sp,
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.background(Color(0xE91B1F27), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 7.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    listOf(CameraMode.PORTRAIT, CameraMode.PHOTO, CameraMode.PRO,
+                        CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.MORE).forEach { target ->
+                        val active = mode == target
+                        Text(target.name.take(5), fontSize = 10.sp, letterSpacing = .3.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (mode == target) Color.Black else Color.LightGray,
-                            modifier = Modifier.background(
-                                if (mode == target) Color(0xFFFFD88C) else Color.Transparent,
-                                RoundedCornerShape(18.dp))
+                            color = if (active) Color(0xFF15171C) else Color.White,
+                            modifier = Modifier
+                                .background(if (active) Color(0xFFFFD88C) else Color.Transparent,
+                                    RoundedCornerShape(16.dp))
                                 .clickable {
                                     if (mode == CameraMode.PRO && target != CameraMode.PRO) {
                                         controller.resetManual()
@@ -322,18 +329,25 @@ fun CameraScreen() {
                                     }
                                     mode = target
                                 }
-                                .padding(horizontal = 12.dp, vertical = 7.dp))
+                                .padding(horizontal = 9.dp, vertical = 9.dp))
                     }
                 }
                 ZoomRail(zoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
                 })
+                if (mode != CameraMode.PHOTO && mode != CameraMode.PRO) {
+                    Text("${mode.name} capture is not available yet",
+                        fontSize = 10.sp, color = Color.White,
+                        modifier = Modifier.background(Color(0xD51B1E25),
+                            RoundedCornerShape(14.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp))
+                }
             }
         }
 
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 150.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 146.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
             Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight.coerceAtMost(350.dp))
@@ -367,7 +381,7 @@ fun CameraScreen() {
 
         // Single integrated control dock. The shutter has an 88dp footprint,
         // so it no longer pushes the other controls into disconnected positions.
-        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+        Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
             .background(Brush.verticalGradient(
                 listOf(Color(0xF222252D), Color(0xFF101217))),
                 RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
