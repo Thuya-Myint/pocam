@@ -1,5 +1,33 @@
 package com.pocam.camera.ui.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cameraswitch
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.FlashOff
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -62,6 +90,8 @@ fun CameraScreen() {
     var exposureIndex by remember { mutableStateOf(0) }
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
+    var showProPanel by remember { mutableStateOf(false) }
+    var flashEnabled by remember { mutableStateOf(false) }
     var lastPhoto by remember { mutableStateOf<Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -93,89 +123,143 @@ fun CameraScreen() {
                 }
             }, modifier = Modifier.fillMaxSize())
         }
-        Text("pocam.", color = Color.White,
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
-        PerformanceHud(Modifier.align(Alignment.TopEnd).padding(20.dp))
-        lastPhoto?.let { uri ->
-            Text("View last photo", color = Color.White,
-                modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 54.dp)
-                    .background(Color(0xAA25262A), CircleShape)
-                    .clickable {
-                        try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "image/jpeg")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            })
-                        } catch (exception: Exception) {
-                            error = "No photo viewer available"
-                        }
-                    }.padding(10.dp))
-        }
-        Text(modeSymbol(mode), color = Color.White,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 24.dp, bottom = 34.dp))
-        Row(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 110.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(1f, 2f, 4f).forEach { value ->
-                Text("${value.toInt()}×", color = Color.White,
-                    modifier = Modifier.background(
-                        if (zoom == value) Color(0xFF66676B) else Color(0xCC25262A),
-                        CircleShape).clickable { zoom = value; controller.setZoom(value) }
-                        .padding(horizontal = 12.dp, vertical = 9.dp))
+        // Translucent top bar, independent of the live camera preview.
+        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
+            .background(Color(0x990E1015)).padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("pocam.", color = Color.White, fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+                Text("POCKET CAMERA", color = Color(0xFFADB2BC), fontSize = 9.sp,
+                    letterSpacing = 2.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(mode.name, color = Color.White, fontSize = 11.sp,
+                    modifier = Modifier.background(Color(0xFF343942), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 12.dp, vertical = 7.dp))
+                Spacer(Modifier.width(8.dp))
+                PerformanceHud()
             }
         }
-        if (mode == CameraMode.PRO) {
-            Column(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).heightIn(max = 520.dp)
-                .background(Color(0xCC25262A), androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+
+        // Zoom controls stay above the shutter wheel and do not obstruct the preview.
+        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 216.dp)
+            .background(Color(0xB91A1C22), RoundedCornerShape(32.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(1f, 2f, 4f).forEach { value ->
+                val active = zoom == value
+                Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.background(
+                        if (active) Color.White else Color.Transparent, CircleShape)
+                        .clickable { zoom = value; controller.setZoom(value) }
+                        .padding(horizontal = 14.dp, vertical = 9.dp))
+            }
+        }
+
+        AnimatedVisibility(mode == CameraMode.PRO && showProPanel,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+            enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
+            exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
+            Column(Modifier.heightIn(max = 480.dp)
+                .background(Color(0xEB17191E), RoundedCornerShape(18.dp))
                 .padding(12.dp)) {
-                Text("EXPOSURE", color = Color.White)
-                Text(if (exposureRange.first == exposureRange.last) "Unavailable"
-                     else "${exposureIndex} steps", color = Color.White)
-                Slider(
-                    value = exposureIndex.toFloat(),
-                    onValueChange = { value ->
-                        exposureIndex = value.toInt().coerceIn(exposureRange.first, exposureRange.last)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("PRO", color = Color.White, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { showProPanel = false }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close Pro controls",
+                            tint = Color.White)
+                    }
+                }
+                Text("EV ${exposureIndex * controller.exposureStepEv()}",
+                    color = Color.White, fontSize = 12.sp)
+                Slider(value = exposureIndex.toFloat(),
+                    onValueChange = {
+                        exposureIndex = it.toInt().coerceIn(exposureRange.first, exposureRange.last)
                         controller.setExposure(exposureIndex)
                     },
                     valueRange = exposureRange.first.toFloat()..
-                        (if (exposureRange.first == exposureRange.last) exposureRange.last + 1f
-                         else exposureRange.last.toFloat()),
+                        (if (exposureRange.first == exposureRange.last) 1f
+                        else exposureRange.last.toFloat()),
                     enabled = exposureRange.first != exposureRange.last,
-                    modifier = Modifier.width(150.dp)
-                )
-                Text("Tap preview to focus", color = Color.LightGray)
+                    modifier = Modifier.width(180.dp))
                 ManualControls(controller, cameraGeneration)
             }
         }
-        Text("⟳", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
-            .padding(end = 22.dp, bottom = 124.dp)
-            .background(Color(0xCC25262A), CircleShape)
-            .clickable { previewView?.let { controller.flip(owner, it, { message -> error = message }) {
-                cameraGeneration++
-                exposureRange = controller.exposureRange()
-                exposureIndex = 0
-            }; zoom = 1f } }
-            .padding(14.dp))
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
-            ShutterButton(mode = mode,
-                onCapture = {
-                    if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
-                        controller.takePhoto(
-                            onSaved = { uri ->
-                                lastPhoto = uri
-                                Toast.makeText(context, "Saved to Pocam photos", Toast.LENGTH_SHORT).show()
-                            },
-                            onError = { error = it })
-                    } else {
-                        Toast.makeText(context, "${mode.name} coming soon", Toast.LENGTH_SHORT).show()
+
+        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Color(0xB9101218))
+            .padding(horizontal = 22.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = {
+                lastPhoto?.let { uri ->
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "image/jpeg")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    } catch (_: Exception) { error = "No photo viewer available" }
+                }
+            }, enabled = lastPhoto != null) {
+                Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
+                    tint = if (lastPhoto == null) Color.Gray else Color.White)
+            }
+            Box(Modifier.size(100.dp), contentAlignment = Alignment.Center) {
+                ShutterButton(mode = mode,
+                    onCapture = {
+                        if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
+                            controller.takePhoto(
+                                onSaved = { uri ->
+                                    lastPhoto = uri
+                                    Toast.makeText(context, "Saved to Pocam photos",
+                                        Toast.LENGTH_SHORT).show()
+                                },
+                                onError = { error = it })
+                        } else {
+                            Toast.makeText(context, "${mode.name} coming soon",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onModeSelected = {
+                        if (mode == CameraMode.PRO && it != CameraMode.PRO) {
+                            controller.resetManual()
+                            showProPanel = false
+                        }
+                        mode = it
+                        exposureRange = controller.exposureRange()
+                        exposureIndex = 0
+                        controller.setExposure(0)
+                    })
+            }
+            IconButton(onClick = {
+                previewView?.let { view ->
+                    controller.flip(owner, view, { error = it }) {
+                        cameraGeneration++
+                        exposureRange = controller.exposureRange()
+                        exposureIndex = 0
                     }
-                },
-                onModeSelected = {
-                    mode = it
-                    exposureRange = controller.exposureRange()
-                    exposureIndex = 0
-                    controller.setExposure(0)
-                })
+                    zoom = 1f
+                }
+            }) {
+                Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
+                    tint = Color.White)
+            }
         }
+        if (mode == CameraMode.PRO) {
+            IconButton(onClick = { showProPanel = !showProPanel },
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 132.dp)
+                    .background(Color(0xD923252B), CircleShape)) {
+                Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
+                    contentDescription = "Toggle Pro controls", tint = Color.White)
+            }
+        }
+        Text("Hold shutter to change mode", color = Color(0xFFBFC2C9),
+            fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = 112.dp))
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xCC550000)).padding(12.dp))
