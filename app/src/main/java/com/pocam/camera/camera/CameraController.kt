@@ -12,6 +12,16 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
+import androidx.camera.extensions.ExtensionsManager
+import androidx.camera.extensions.ExtensionMode
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.VideoRecordEvent
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import com.pocam.camera.domain.model.CameraMode
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -34,6 +44,15 @@ class CameraController(private val context: Context) {
     private var onCameraReady: (() -> Unit)? = null
     private var camera: Camera? = null
     private var front = false
+    private var activeMode = CameraMode.PHOTO
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var recording: Recording? = null
+    private var recordingActive = false
+    fun isRecording(): Boolean = recordingActive
+    fun setPhotoQuality(highQuality: Boolean) {
+        capture.flashMode = ImageCapture.FLASH_MODE_OFF
+        // ImageCapture mode is configured at construction; use a quality-first default.
+    }
     private var manualIso: Int? = null
     private var manualExposureNs: Long? = null
     private var manualFocusDiopters: Float? = null
@@ -124,27 +143,107 @@ class CameraController(private val context: Context) {
 
     private var zoom = 1f
     private val capture = ImageCapture.Builder()
-        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY).build()
 
-    fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
+    fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
+             onReady: () -> Unit = {}, mode: CameraMode = activeMode) {
+        activeMode = mode
         onCameraReady = onReady
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
             try {
                 val cameraProvider = future.get()
-                val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
-                cameraProvider.unbindAll()
-                val selector = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-                camera = cameraProvider.bindToLifecycle(owner, selector, preview, capture)
-                provider = cameraProvider
-                setZoom(zoom)
-                setTorch(torchEnabled)
-                applyManual()
-                onCameraReady?.invoke()
+                val baseSelector = if (front) CameraSelector.DEFAULT_FRONT_CAMERA
+                    else CameraSelector.DEFAULT_BACK_CAMERA
+                val extensionMode = when (mode) {
+                    CameraMode.NIGHT -> ExtensionMode.NIGHT
+                    CameraMode.PORTRAIT -> ExtensionMode.BOKEH
+                    else -> ExtensionMode.HDR
+                }
+                // Extensions are optional: unsupported devices retain normal CameraX capture.
+                val extensionFuture = ExtensionsManager.getInstanceAsync(context, cameraProvider)
+                extensionFuture.addListener({
+                    try {
+                        val extensions = extensionFuture.get()
+                        val selectedExtension = if (mode == CameraMode.NIGHT ||
+                            mode == CameraMode.PORTRAIT || mode == CameraMode.PHOTO) extensionMode
+                            else -1
+                        val selector = if (selectedExtension != -1 &&
+                            extensions.isExtensionAvailable(baseSelector, selectedExtension)) {
+                            extensions.getExtensionEnabledCameraSelector(baseSelector, selectedExtension)
+                        } else baseSelector
+                        val preview = Preview.Builder().build().also {
+                            it.surfaceProvider = view.surfaceProvider
+                        }
+                        recording?.stop()
+                        recording = null
+                        recordingActive = false
+                        cameraProvider.unbindAll()
+                        if (mode == CameraMode.VIDEO) {
+                            val recorder = Recorder.Builder()
+                                .setQualitySelector(QualitySelector.from(Quality.HIGHEST)).build()
+                            val video = VideoCapture.withOutput(recorder)
+                            camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
+                            videoCapture = video
+                        } else {
+                            videoCapture = null
+                            camera = cameraProvider.bindToLifecycle(owner, selector, preview, capture)
+                        }
+                        provider = cameraProvider
+                        setZoom(zoom)
+                        setTorch(torchEnabled)
+                        if (mode == CameraMode.PRO) applyManual()
+                        onCameraReady?.invoke()
+                    } catch (e: Exception) {
+                        onError(e.message ?: "Unable to configure camera")
+                    }
+                }, ContextCompat.getMainExecutor(context))
             } catch (e: Exception) {
                 onError(e.message ?: "Unable to start camera")
             }
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    fun toggleVideo(onSaved: (Uri) -> Unit, onError: (String) -> Unit,
+                    onState: (Boolean) -> Unit) {
+        if (recordingActive) {
+            recording?.stop()
+            return
+        }
+        val video = videoCapture ?: run { onError("Video camera is not ready"); return }
+        val name = "POCAM_" +
+            SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date()) + ".mp4"
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                put(MediaStore.Video.Media.RELATIVE_PATH, "DCIM/Pocam")
+        }
+        val options = MediaStoreOutputOptions.Builder(
+            context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            .setContentValues(values).build()
+        try {
+            recording = video.output.prepareRecording(context, options)
+                .start(ContextCompat.getMainExecutor(context)) { event ->
+                    when (event) {
+                        is VideoRecordEvent.Start -> {
+                            recordingActive = true
+                            onState(true)
+                        }
+                        is VideoRecordEvent.Finalize -> {
+                            recordingActive = false
+                            recording = null
+                            onState(false)
+                            if (event.hasError()) onError("Video recording failed: ${event.error}")
+                            else onSaved(event.outputResults.outputUri)
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            recordingActive = false
+            onState(false)
+            onError(e.message ?: "Could not start video recording")
+        }
     }
 
     fun flip(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit, onReady: () -> Unit = {}) {
@@ -155,7 +254,7 @@ class CameraController(private val context: Context) {
         manualExposureNs = null
         manualFocusDiopters = null
         whiteBalanceMode = CaptureRequest.CONTROL_AWB_MODE_AUTO
-        bind(owner, view, onError, onReady)
+        bind(owner, view, onError, onReady, activeMode)
     }
 
     fun setZoom(ratio: Float) {
@@ -238,6 +337,9 @@ class CameraController(private val context: Context) {
     }
 
     fun release() {
+        recording?.stop()
+        recording = null
+        recordingActive = false
         provider?.unbindAll()
         camera = null
         provider = null

@@ -29,7 +29,7 @@ import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
-fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
+fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = false, onCapture: () -> Unit, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
     val haptics = LocalHapticFeedback.current
     val busyNow by androidx.compose.runtime.rememberUpdatedState(busy)
     var expanded by remember { mutableStateOf(false) }
@@ -112,7 +112,9 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, onCapture: () -> Unit
                 },
             contentAlignment = Alignment.Center
         ) {
-            Box(Modifier.size(70.dp).background(Color.White, CircleShape))
+            Box(Modifier.size(if (recording) 40.dp else 70.dp)
+                .background(if (recording) Color(0xFFFF5555) else Color.White,
+                    if (recording) androidx.compose.foundation.shape.RoundedCornerShape(12.dp) else CircleShape))
         }
     }
 }

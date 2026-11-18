@@ -123,6 +123,7 @@ fun CameraScreen() {
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
     var captureBusy by remember { mutableStateOf(false) }
+    var recordingVideo by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf<Int?>(null) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
@@ -283,7 +284,7 @@ fun CameraScreen() {
             }
         }
         if (wheelOpen) {
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp).zIndex(20f)) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 154.dp).zIndex(20f)) {
                 RadialModeWheel(wheelHover)
             }
         }
@@ -327,8 +328,8 @@ fun CameraScreen() {
                     zoom = value
                     controller.setZoom(value)
                 })
-                if (mode != CameraMode.PHOTO && mode != CameraMode.PRO) {
-                    Text("${mode.name} capture is not available yet",
+                if (mode == CameraMode.MORE) {
+                    Text("More modes coming soon",
                         fontSize = 10.sp, color = Color.White,
                         modifier = Modifier.background(Color(0xD51B1E25),
                             RoundedCornerShape(14.dp))
@@ -387,7 +388,7 @@ fun CameraScreen() {
                     lastPhoto?.let { uri ->
                         try {
                             context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "image/jpeg")
+                                setDataAndType(uri, if (uri.toString().contains("video")) "video/mp4" else "image/jpeg")
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             })
                         } catch (_: Exception) { error = "No photo viewer available" }
@@ -397,10 +398,15 @@ fun CameraScreen() {
                     tint = if (lastPhoto == null) Color.LightGray else Color.White)
             }
             Box(contentAlignment = Alignment.Center) {
-                ShutterButton(mode = mode, busy = captureBusy,
+                ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onCapture = {
-                        if (captureBusy) return@ShutterButton
-                        if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
+                        if (captureBusy || recordingVideo) return@ShutterButton
+                        if (mode == CameraMode.VIDEO) {
+                            controller.toggleVideo(
+                                onSaved = { uri -> lastPhoto = uri },
+                                onError = { error = it },
+                                onState = { recordingVideo = it })
+                        } else if (mode != CameraMode.MORE) {
                             captureBusy = true
                             countdownJob = scope.launch {
                                 if (timerSeconds > 0) {
@@ -432,7 +438,7 @@ fun CameraScreen() {
                         }
                     },
                     onModeSelected = {
-                        if (captureBusy) return@ShutterButton
+                        if (captureBusy || recordingVideo) return@ShutterButton
                         if (mode == CameraMode.PRO && it != CameraMode.PRO) {
                             controller.resetManual()
                             showProPanel = false
@@ -443,6 +449,12 @@ fun CameraScreen() {
                         exposureRange = controller.exposureRange()
                         exposureIndex = 0
                         controller.setExposure(0)
+                        previewView?.let { view ->
+                            controller.bind(owner, view, { error = it }, {
+                                cameraGeneration++
+                                exposureRange = controller.exposureRange()
+                            }, it)
+                        }
                     }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
                 if (captureBusy) {
                     Text(if (countdown != null) "TIMER" else "SAVING",
@@ -454,7 +466,7 @@ fun CameraScreen() {
             }
             Box(Modifier.size(52.dp)
                 .background(Color(0xFF323640), RoundedCornerShape(16.dp))
-                .clickable(enabled = !captureBusy) {
+                .clickable(enabled = !captureBusy && !recordingVideo) {
                     showSettings = false
                     showProPanel = false
                     previewView?.let { view ->
@@ -470,6 +482,13 @@ fun CameraScreen() {
                 Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
                     tint = Color.White)
             }
+        }
+        if (recordingVideo) {
+            Text("● REC  ·  TAP SHUTTER TO STOP", color = Color(0xFFFF7777),
+                fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 170.dp)
+                    .background(Color(0xDD15171C), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp))
         }
         countdown?.let { remaining ->
             Box(
