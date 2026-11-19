@@ -40,6 +40,9 @@ import androidx.compose.material.icons.rounded.Cameraswitch
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
 import android.graphics.BitmapFactory
@@ -582,16 +585,39 @@ fun CameraScreen() {
         // Mode strip stays directly above the shutter dock. A long shutter press
         // highlights the mode being scrubbed without opening the old radial wheel.
         if (!showSettings && editPhoto == null) {
-            Row(Modifier.align(Alignment.BottomCenter).zIndex(13f)
+            Box(Modifier.align(Alignment.BottomCenter).zIndex(13f)
                 .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, bottom = 150.dp)
-                .fillMaxWidth().background(Color(0xE91E1E26), CircleShape)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically) {
+                .fillMaxWidth().height(110.dp)) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val path = Path()
+                    val top = 16.dp.toPx()
+                    val arch = 32.dp.toPx()
+                    val thickness = 48.dp.toPx()
+                    path.moveTo(0f, top + arch)
+                    for (i in 0..80) {
+                        val t = i / 80f
+                        val x = size.width * t
+                        val y = top + arch * (4f * (t - .5f) * (t - .5f))
+                        path.lineTo(x, y)
+                    }
+                    for (i in 80 downTo 0) {
+                        val t = i / 80f
+                        val x = size.width * t
+                        val y = top + arch * (4f * (t - .5f) * (t - .5f)) + thickness
+                        path.lineTo(x, y)
+                    }
+                    path.close()
+                    drawPath(path, Color(0xA81E1E26))
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Top) {
                 listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
-                    CameraMode.PRO, CameraMode.PORTRAIT).forEach { candidate ->
+                    CameraMode.PRO, CameraMode.PORTRAIT).forEachIndexed { index, candidate ->
                     val selected = (if (wheelOpen) wheelHover else mode) == candidate
                     Box(Modifier.weight(1f)
+                        .offset(y = (16 + 32 * (4f * ((index + .5f) / 5f - .5f) *
+                            ((index + .5f) / 5f - .5f))).dp)
                         .background(if (selected) accent else Color.Transparent, CircleShape)
                         .clickable(enabled = !captureBusy && !recordingVideo) {
                             if (candidate != mode) {
