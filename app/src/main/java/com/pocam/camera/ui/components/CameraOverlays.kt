@@ -93,23 +93,16 @@ fun ZoomRail(
     val latestCommit by rememberUpdatedState(onCommit)
     val latestTick by rememberUpdatedState(onTick)
     val haptics = LocalHapticFeedback.current
-    var displayZoom by remember { mutableFloatStateOf(selected) }
+    val zoomState = remember { mutableFloatStateOf(selected) }
     var previousDetent by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     LaunchedEffect(selected, minZoom, maxZoom) {
-        displayZoom = selected.coerceIn(minZoom, maxZoom.coerceAtLeast(minZoom))
+        zoomState.floatValue = selected.coerceIn(minZoom, maxZoom.coerceAtLeast(minZoom))
     }
     val maximum = maxZoom.coerceAtLeast(minZoom + 0.01f)
 
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp)) {
-        Box(
-            Modifier.background(Color(0xDB17191F), CircleShape)
-                .border(.6.dp, Color.White.copy(alpha=.28f), CircleShape)
-                .padding(horizontal = 12.dp, vertical = 3.dp)
-        ) {
-            Text(String.format(java.util.Locale.US, "%.1f×", displayZoom),
-                color = Color.White, fontWeight = FontWeight.Medium, fontSize = 11.sp)
-        }
+        ZoomValuePill(zoomState)
         Box(
             Modifier.fillMaxWidth().height(72.dp)
                 .pointerInput(minZoom, maximum) {
@@ -121,8 +114,8 @@ fun ZoomRail(
                                 (size.width - 2f * pad).coerceAtLeast(1f)).coerceIn(0f, 1f)
                             val value = minZoom + (maximum - minZoom) * f
                             val next = value.coerceIn(minZoom, maximum)
-                            if (kotlin.math.abs(next - displayZoom) >= .008f) {
-                                displayZoom = next
+                            if (kotlin.math.abs(next - zoomState.floatValue) >= .008f) {
+                                zoomState.floatValue = next
                                 latestSelect(next)
                             }
                             val detent = (next * 2f).toInt()
@@ -141,7 +134,7 @@ fun ZoomRail(
                                 change.consume()
                             }
                         } while (event.changes.any { it.id == down.id && it.pressed })
-                        latestCommit(displayZoom)
+                        latestCommit(zoomState.floatValue)
                     }
                 }
                 .drawWithCache {
@@ -181,7 +174,7 @@ fun ZoomRail(
                                 (if (major) 1.45f else .85f).dp.toPx(),
                                 cap = androidx.compose.ui.graphics.StrokeCap.Round)
                         }
-                        val f = ((displayZoom - minZoom) / (maximum - minZoom))
+                        val f = ((zoomState.floatValue - minZoom) / (maximum - minZoom))
                             .coerceIn(0f, 1f)
                         val point = Offset(pad + usable * f, y(f))
                         drawCircle(PocamPalette.Orange, 8.dp.toPx(), point)
@@ -189,6 +182,19 @@ fun ZoomRail(
                     }
                 }
         )
+    }
+}
+
+@Composable
+private fun ZoomValuePill(valueState: androidx.compose.runtime.State<Float>) {
+    // Only this tiny text node recomposes while zooming; the parent arc stays cached.
+    Box(
+        Modifier.background(Color(0xDB17191F), CircleShape)
+            .border(.6.dp, Color.White.copy(alpha=.28f), CircleShape)
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+    ) {
+        Text(String.format(java.util.Locale.US, "%.1f×", valueState.value),
+            color = Color.White, fontWeight = FontWeight.Medium, fontSize = 11.sp)
     }
 }
 
