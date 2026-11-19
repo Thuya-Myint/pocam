@@ -188,9 +188,7 @@ fun CameraScreen() {
     var showSettings by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
     var focusLocked by remember { mutableStateOf(false) }
-    var wheelOpen by remember { mutableStateOf(false) }
     var shutterPressed by remember { mutableStateOf(false) }
-    var wheelHover by remember { mutableStateOf(CameraMode.PHOTO) }
     var captureFlash by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     var focusSequence by remember { mutableStateOf(0) }
@@ -229,7 +227,12 @@ fun CameraScreen() {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val availableHeight = maxHeight
-        val proMaxHeight = (availableHeight - 260.dp).coerceAtLeast(120.dp)
+        // Pro tools occupy a compact scrollable panel ABOVE the zoom ruler and
+        // mode selector. Reserve the top safe area for the camera header.
+        val proPanelBottom = if (!controller.isFrontCamera() && controller.rearLenses.size > 1)
+            510.dp else 465.dp
+        val proMaxHeight = (availableHeight - proPanelBottom - 140.dp)
+            .coerceAtLeast(96.dp).coerceAtMost(290.dp)
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -545,12 +548,14 @@ fun CameraScreen() {
             }
         }
         AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !showSettings,
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 126.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(11f)
+                .navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, bottom = proPanelBottom),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
-            Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight.coerceAtMost(350.dp))
-                .shadow(18.dp, RoundedCornerShape(26.dp))
-                .background(Color(0xF51D2028), RoundedCornerShape(26.dp))
+            Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight)
+                .shadow(12.dp, RoundedCornerShape(24.dp))
+                .background(Color(0xE520222A), RoundedCornerShape(24.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(12.dp)) {
                 Row(Modifier.fillMaxWidth(),
@@ -563,19 +568,17 @@ fun CameraScreen() {
                             tint = Color.White)
                     }
                 }
-                Text("EV ${exposureIndex * controller.exposureStepEv()}",
-                    color = Color.White, fontSize = 12.sp)
-                StraightRuler(value = exposureIndex.toFloat(),
-                    label = "${exposureIndex * controller.exposureStepEv()} EV",
-                    onValueChange = {
-                        exposureIndex = it.toInt().coerceIn(exposureRange.first, exposureRange.last)
-                        controller.setExposure(exposureIndex)
-                    },
-                    valueRange = exposureRange.first.toFloat()..
-                        (if (exposureRange.first == exposureRange.last) 1f
-                        else exposureRange.last.toFloat()),
-                    modifier = Modifier.fillMaxWidth())
-                ManualControls(controller, cameraGeneration)
+                ManualControls(
+                    controller = controller,
+                    cameraGeneration = cameraGeneration,
+                    exposureIndex = exposureIndex,
+                    exposureRange = exposureRange,
+                    exposureStepEv = controller.exposureStepEv(),
+                    onExposure = { value ->
+                        exposureIndex = value
+                        controller.setExposure(value)
+                    }
+                )
             }
         }
 
@@ -584,7 +587,6 @@ fun CameraScreen() {
         if (!showSettings && editPhoto == null) {
             CurvedModeSelector(
                 selected = mode,
-                hovered = if (wheelOpen) wheelHover else null,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
                     .navigationBarsPadding()
                     .padding(start = 18.dp, end = 18.dp, bottom = 150.dp),
@@ -662,7 +664,7 @@ fun CameraScreen() {
             Box(Modifier.size(88.dp),
                 contentAlignment = Alignment.Center) {
 
-                ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
+                ShutterButton(busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
                     onCapture = {
                         if (captureBusy) return@ShutterButton
@@ -705,32 +707,7 @@ fun CameraScreen() {
                                 Toast.LENGTH_SHORT).show()
                         }
                     },
-                    onModeSelected = {
-                        if (captureBusy || recordingVideo) return@ShutterButton
-                        if (mode == CameraMode.PRO && it != CameraMode.PRO) {
-                            controller.resetManual()
-                            showProPanel = false
-                        }
-                        mode = it
-                        focusLocked = false
-                        focusLockPoint = null
-                        showMore = false
-                        showProPanel = it == CameraMode.PRO
-                        showSettings = false
-                        exposureRange = controller.exposureRange()
-                        exposureIndex = 0
-                        controller.setExposure(0)
-                        previewView?.let { view ->
-                            controller.bind(owner, view, { error = it }, {
-                                cameraGeneration++
-                                exposureRange = controller.exposureRange()
-                                maxZoom = controller.maxZoom()
-                                minZoom = controller.minZoom()
-                            activeLensId = controller.activeCameraId()
-                            activeFocalMm = controller.activeFocalLength()
-                            }, it)
-                        }
-                    }, onWheelChange = { wheelOpen = it }, onHoverMode = { wheelHover = it })
+                    })
                 if (captureBusy) {
                     Text(if (countdown != null) "TIMER" else "SAVING",
                         color = accent, fontSize = 9.sp,

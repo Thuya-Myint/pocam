@@ -1,152 +1,216 @@
 package com.pocam.camera.ui.components
 
 import android.hardware.camera2.CaptureRequest
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.ui.platform.LocalContext
-import android.os.Build
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pocam.camera.camera.CameraController
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
+/**
+ * One compact Pro panel with one ruler per active control.
+ * The parent provides the scrollable, glass-style surface.
+ */
 @Composable
-fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier: Modifier = Modifier) {
+fun ManualControls(
+    controller: CameraController,
+    cameraGeneration: Int,
+    exposureIndex: Int,
+    exposureRange: IntRange,
+    exposureStepEv: Float,
+    onExposure: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val accent = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            dynamicDarkColorScheme(context).primary
         else Color(0xFFFFD88C)
     }
     var caps by remember { mutableStateOf<CameraController.ManualCapabilities?>(null) }
     var isoFraction by remember { mutableFloatStateOf(0f) }
     var shutterFraction by remember { mutableFloatStateOf(0f) }
     var focusFraction by remember { mutableFloatStateOf(0f) }
+    var wb by remember { mutableStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO) }
+    var activeControl by remember { mutableStateOf("ISO") }
+
     LaunchedEffect(cameraGeneration) {
         caps = controller.manualCapabilities()
         isoFraction = 0f
         shutterFraction = 0f
         focusFraction = 0f
+        wb = CaptureRequest.CONTROL_AWB_MODE_AUTO
     }
-    var wb by remember { mutableStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO) }
-    var activeControl by remember { mutableStateOf("ISO") }
 
-    Column(modifier.fillMaxWidth()
-        .background(Color(0xD91B1D26), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-        .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("MANUAL STUDIO  •  PRO", color = accent,
-            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        Button(onClick = { caps = controller.manualCapabilities() },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
-                contentColor = Color.White)) {
-            Text(if (caps == null) "Detect camera controls" else "Refresh sensor capabilities")
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
             listOf("ISO", "SHUTTER", "WB", "EV", "FOCUS").forEach { control ->
                 val selected = activeControl == control
-                Box(Modifier.weight(1f)
-                    .background(if (selected) accent else Color(0xAA363943), CircleShape)
-                    .clickable { activeControl = control }
-                    .padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                    Text(control, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                        color = if (selected) Color.Black else Color.White)
+                Box(
+                    Modifier.weight(1f)
+                        .background(if (selected) accent else Color(0xAA363943), CircleShape)
+                        .clickable { activeControl = control }
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        control,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (selected) Color.Black else Color.White
+                    )
                 }
             }
         }
+
         val current = caps
-        if (current != null) {
-            val isoRange = current.isoRange
-            val exposureRange = current.exposureRangeNs
-            if (isoRange != null && exposureRange != null) {
-                val isoValue = (isoRange.first + (isoRange.last - isoRange.first) *
-                    isoFraction).roundToInt().coerceIn(isoRange)
-                if (activeControl == "ISO") { Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
-                StraightRuler(value = isoFraction, valueRange = 0f..1f, label = if (isoFraction == 0f) "AUTO" else "$isoValue", onValueChange = {
-                    isoFraction = it
-                    controller.setManualIso(if (it == 0f) null else isoValueFor(isoRange, it))
-                })
+        when (activeControl) {
+            "ISO" -> {
+                val range = current?.isoRange
+                if (range == null) {
+                    Text("Manual ISO unavailable", color = Color.LightGray)
+                } else {
+                    val isoValue = isoValueFor(range, isoFraction)
+                    Text(
+                        if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue",
+                        color = Color.White
+                    )
+                    StraightRuler(
+                        value = isoFraction, valueRange = 0f..1f,
+                        label = if (isoFraction == 0f) "AUTO" else "$isoValue",
+                        onValueChange = {
+                            isoFraction = it
+                            controller.setManualIso(
+                                if (it == 0f) null else isoValueFor(range, it)
+                            )
+                        }
+                    )
                 }
-                if (activeControl == "SHUTTER") {
-                val minNs = exposureRange.first.coerceAtLeast(1L)
-                val maxNs = exposureRange.last.coerceAtMost(1_000_000_000L).coerceAtLeast(minNs)
-                val selectedNs = shutterNs(minNs, maxNs, shutterFraction)
-                Text(if (shutterFraction == 0f) "Shutter: AUTO"
-                    else "Shutter: ${"%.1f".format(selectedNs / 1_000_000.0)} ms",
-                    color = Color.White)
-                StraightRuler(value = shutterFraction, valueRange = 0f..1f, label = if (shutterFraction == 0f) "AUTO" else "${"%.1f".format(selectedNs / 1_000_000.0)} ms", onValueChange = {
-                    shutterFraction = it
-                    controller.setManualExposureNs(
-                        if (it == 0f) null else shutterNs(minNs, maxNs, it))
-                })
-                Text("ISO/shutter AUTO uses a manual baseline when the other is fixed",
-                    color = Color.LightGray)
+            }
+            "SHUTTER" -> {
+                val range = current?.exposureRangeNs
+                if (range == null) {
+                    Text("Manual shutter unavailable", color = Color.LightGray)
+                } else {
+                    val minNs = range.first.coerceAtLeast(1L)
+                    val maxNs = range.last.coerceAtMost(1_000_000_000L).coerceAtLeast(minNs)
+                    val selectedNs = shutterNs(minNs, maxNs, shutterFraction)
+                    val label = if (shutterFraction == 0f) "AUTO"
+                        else String.format(
+                            java.util.Locale.US, "%.1f ms", selectedNs / 1_000_000.0
+                        )
+                    Text("Shutter: $label", color = Color.White)
+                    StraightRuler(
+                        value = shutterFraction, valueRange = 0f..1f, label = label,
+                        onValueChange = {
+                            shutterFraction = it
+                            controller.setManualExposureNs(
+                                if (it == 0f) null else shutterNs(minNs, maxNs, it)
+                            )
+                        }
+                    )
                 }
-            } else Text("Manual ISO/shutter unavailable", color = Color.LightGray)
-            if (activeControl == "FOCUS" && current.minFocusDistance > 0f) {
-                Text(if (focusFraction == 0f) "Focus: AUTO"
-                    else "Focus: ${"%.2f".format(focusFraction * current.minFocusDistance)} D",
-                    color = Color.White)
-                StraightRuler(value = focusFraction, valueRange = 0f..1f, label = if (focusFraction == 0f) "AUTO" else "${"%.2f".format(focusFraction * current.minFocusDistance)} D", onValueChange = {
-                    focusFraction = it
-                    controller.setManualFocus(if (it == 0f) null else
-                        it * current.minFocusDistance)
-                })
-            } else if (activeControl == "FOCUS") Text("Manual focus unavailable", color = Color.LightGray)
-            if (activeControl == "WB") {
-            Text("White balance", color = Color.White)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Auto" to CaptureRequest.CONTROL_AWB_MODE_AUTO,
-                    "Day" to CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT,
-                    "Cloud" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT)
-                    .filter { it.second in current.supportedAwbModes }
-                    .forEach { (label, value) ->
-                        Text(label, color = if (wb == value) accent else Color.White,
-                            modifier = Modifier.background(Color(0x663A3A3A),
-                                RoundedCornerShape(12.dp))
-                                .clickable { wb = value; controller.setWhiteBalance(value) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+            "WB" -> {
+                Text("White balance", color = Color.White)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val options = listOf(
+                        "Auto" to CaptureRequest.CONTROL_AWB_MODE_AUTO,
+                        "Day" to CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT,
+                        "Cloud" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT
+                    ).filter { current?.supportedAwbModes?.contains(it.second) == true }
+                    if (options.isEmpty()) Text("White balance unavailable", color = Color.LightGray)
+                    options.forEach { (label, value) ->
+                        Box(
+                            Modifier.background(
+                                if (wb == value) accent else Color(0xAA363943), CircleShape
+                            ).clickable {
+                                wb = value
+                                controller.setWhiteBalance(value)
+                            }.padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                label, fontSize = 12.sp,
+                                color = if (wb == value) Color.Black else Color.White
+                            )
+                        }
                     }
+                }
             }
+            "EV" -> {
+                if (exposureRange.first >= exposureRange.last) {
+                    Text("Exposure compensation unavailable", color = Color.LightGray)
+                } else {
+                    val label = String.format(
+                        java.util.Locale.US, "%.1f EV", exposureIndex * exposureStepEv
+                    )
+                    Text("Exposure: $label", color = Color.White)
+                    StraightRuler(
+                        value = exposureIndex.toFloat(),
+                        valueRange = exposureRange.first.toFloat()..exposureRange.last.toFloat(),
+                        label = label,
+                        onValueChange = {
+                            val next = it.roundToInt().coerceIn(exposureRange)
+                            if (next != exposureIndex) onExposure(next)
+                        }
+                    )
+                }
             }
-            Button(colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
-                contentColor = Color.White), onClick = {
-                isoFraction = 0f; shutterFraction = 0f; focusFraction = 0f
-                wb = CaptureRequest.CONTROL_AWB_MODE_AUTO
-                controller.resetManual()
-            }) { Text("Reset all") }
+            "FOCUS" -> {
+                val distance = current?.minFocusDistance ?: 0f
+                if (distance <= 0f) {
+                    Text("Manual focus unavailable", color = Color.LightGray)
+                } else {
+                    val label = if (focusFraction == 0f) "AUTO"
+                        else String.format(
+                            java.util.Locale.US, "%.2f D", focusFraction * distance
+                        )
+                    Text("Focus: $label", color = Color.White)
+                    StraightRuler(
+                        value = focusFraction, valueRange = 0f..1f, label = label,
+                        onValueChange = {
+                            focusFraction = it
+                            controller.setManualFocus(
+                                if (it == 0f) null else it * distance
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        Box(
+            Modifier.background(Color(0xAA363943), CircleShape)
+                .clickable {
+                    isoFraction = 0f
+                    shutterFraction = 0f
+                    focusFraction = 0f
+                    wb = CaptureRequest.CONTROL_AWB_MODE_AUTO
+                    controller.resetManual()
+                    onExposure(0.coerceIn(exposureRange))
+                }.padding(horizontal = 18.dp, vertical = 9.dp)
+        ) {
+            Text("Reset controls", color = Color.White, fontSize = 12.sp)
         }
     }
 }
