@@ -485,15 +485,20 @@ fun CameraScreen() {
                         tint = if (lastPhoto == null) Color.LightGray else Color.White)
                 }
             }
-            Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
+            // Lift the shutter AND the wheel together during long press.
+            // They must share the same center; the wheel is not independently offset.
+            val wheelDockOffset by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (wheelOpen) (-86).dp else 0.dp,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                    stiffness = 320f
+                ),
+                label = "wheel dock lift"
+            )
+            Box(Modifier.size(88.dp).offset(y = wheelDockOffset),
+                contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
-                    // The 300dp wheel is centered 86dp above the shutter center.
-                    // With the shutter dock 60dp above the bottom, this leaves
-                    // approximately 40dp below the full wheel, not a clipped half-wheel.
-                    RadialModeWheel(
-                        wheelHover,
-                        Modifier.zIndex(1f).offset(y = (-86).dp)
-                    )
+                    RadialModeWheel(wheelHover, Modifier.zIndex(1f))
                 }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
