@@ -243,6 +243,13 @@ fun ProParameterTray(
                             state.focusAuto=false
                             controller.setManualFocus(f*distance)
                         },if(state.focusAuto) "AF" else "MF")
+                    PresetRow(listOf("AUTO","MANUAL"),
+                        if(state.focusAuto)"AUTO" else "MANUAL") { choice ->
+                        state.focusAuto=choice=="AUTO"
+                        controller.setManualFocus(
+                            if(state.focusAuto) null else state.focusFraction*distance
+                        )
+                    }
                 }
             }
             "EV" -> {

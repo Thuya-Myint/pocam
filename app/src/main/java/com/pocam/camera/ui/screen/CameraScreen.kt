@@ -522,6 +522,10 @@ fun CameraScreen() {
                                 if (selected) accent.copy(alpha = .9f) else Color(0x88303842),
                                 CircleShape).clickable(enabled = !captureBusy && !recordingVideo) {
                                 controller.selectRearLens(lens.id)
+
+                                proState.reset()
+
+                                showProPanel = false
                                 zoom = 1f
                                 previewView?.let { view ->
                                     controller.bind(owner, view, { error = it }, {
@@ -737,6 +741,8 @@ fun CameraScreen() {
                             minZoom = controller.minZoom()
                         }
                         zoom = 1f
+
+                        proState.reset()
                         focusLocked = false
                         focusLockPoint = null
                         torchEnabled = false
