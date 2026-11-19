@@ -177,7 +177,7 @@ fun CameraScreen() {
     var videoQuality by remember { mutableStateOf(preferences.getString("video_quality", "1080p") ?: "1080p") }
     var shutterSound by remember { mutableStateOf(preferences.getBoolean("shutter_sound", true)) }
     var videoStabilization by remember { mutableStateOf(preferences.getBoolean("video_stabilization", true)) }
-    var headerOpacity by remember { mutableFloatStateOf(preferences.getFloat("header_opacity", .85f)) }
+    var headerOpacity by remember { mutableStateOf(preferences.getFloat("header_opacity", .85f)) }
     LaunchedEffect(videoStabilization) { controller.setVideoStabilizationEnabled(videoStabilization) }
     LaunchedEffect(videoQuality) {
         controller.setVideoQuality(when (videoQuality) {
