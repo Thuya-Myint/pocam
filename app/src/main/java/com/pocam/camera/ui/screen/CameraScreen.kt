@@ -354,10 +354,10 @@ fun CameraScreen() {
             )
             }
         }
-        // Shooting controls are always reachable and drawn above the preview.
+        // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
         if (!wheelOpen && !showProPanel && !showSettings) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 126.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 218.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
