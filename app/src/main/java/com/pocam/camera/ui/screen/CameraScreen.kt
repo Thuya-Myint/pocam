@@ -142,11 +142,11 @@ fun CameraScreen() {
     val proState = remember { ProUiState() }
     val owner = LocalLifecycleOwner.current
     val tones = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 75) }
-    var lastSoundAt by remember { mutableStateOf(0L) }
+    val lastSoundAt = remember { longArrayOf(0L) }
     fun playUiTone() {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastSoundAt >= 55L) {
-            lastSoundAt = now
+        if (now - lastSoundAt[0] >= 120L) {
+            lastSoundAt[0] = now
             tones.startTone(ToneGenerator.TONE_PROP_BEEP, 45)
         }
     }
@@ -542,10 +542,11 @@ fun CameraScreen() {
                         }
                     }
                 }
-                ZoomRail(zoom, minZoom = minZoom, maxZoom = maxZoom, onSelect = { value ->
-                    zoom = value
-                    controller.setZoom(value)
-                }, onTick = { playUiTone() })
+                // Keep high-frequency dragging inside ZoomRail, not the whole screen.
+                ZoomRail(zoom, minZoom = minZoom, maxZoom = maxZoom,
+                    onSelect = { value -> controller.setZoom(value) },
+                    onCommit = { value -> zoom = value },
+                    onTick = { })
                 if (mode == CameraMode.MORE) {
                     Text("More modes coming soon",
                         fontSize = 10.sp, color = Color.White,
@@ -588,7 +589,7 @@ fun CameraScreen() {
                 exposureStepEv = controller.exposureStepEv(),
                 onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
                 onCollapse = { showProPanel = false },
-                modifier = Modifier.heightIn(max = 180.dp)
+                modifier = Modifier.heightIn(max = 196.dp)
             )
         }
 

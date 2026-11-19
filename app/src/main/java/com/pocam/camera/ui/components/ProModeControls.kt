@@ -168,7 +168,7 @@ fun ProParameterTray(
                             state.isoFraction = fraction
                             state.isoAuto = false
                             controller.setManualIso(isoAt(range, fraction))
-                        }
+                        }, showLabel = false, compact = true
                     )
                     PresetRow(
                         listOf("AUTO", "100", "200", "400", "800"),
@@ -201,7 +201,7 @@ fun ProParameterTray(
                             state.shutterFraction=f
                             state.shutterAuto=false
                             controller.setManualExposureNs(shutterAt(range,f))
-                        })
+                        }, showLabel = false, compact = true)
                     PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
                         active=if(state.shutterAuto) "AUTO" else shutterLabel(ns)) { preset ->
                         if(preset=="AUTO") { state.shutterFraction=0f; state.shutterAuto=true; controller.setManualExposureNs(null) }
@@ -242,7 +242,8 @@ fun ProParameterTray(
                         { f -> state.focusFraction=f
                             state.focusAuto=false
                             controller.setManualFocus(f*distance)
-                        },if(state.focusAuto) "AF" else "MF")
+                        },if(state.focusAuto) "AF" else "MF",
+                        showLabel = false, compact = true)
                     PresetRow(listOf("AUTO","MANUAL"),
                         if(state.focusAuto)"AUTO" else "MANUAL") { choice ->
                         state.focusAuto=choice=="AUTO"
@@ -262,7 +263,7 @@ fun ProParameterTray(
                         { value ->
                             val next=value.roundToInt().coerceIn(exposureRange)
                             if(next!=exposureIndex)onExposure(next)
-                        },label)
+                        },label, showLabel = false, compact = true)
                 }
             }
         }

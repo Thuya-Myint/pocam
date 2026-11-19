@@ -30,6 +30,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.ui.platform.LocalContext
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableFloatStateOf
@@ -79,27 +80,33 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 @Composable
 fun ZoomRail(
     selected: Float, minZoom: Float = 1f, maxZoom: Float, onSelect: (Float) -> Unit,
-    onTick: () -> Unit = {}, modifier: Modifier = Modifier
+    onTick: () -> Unit = {}, modifier: Modifier = Modifier,
+    onCommit: (Float) -> Unit = {}
 ) {
     val accent = cameraAccent()
     val haptics = LocalHapticFeedback.current
     val latestSelect by rememberUpdatedState(onSelect)
+    val latestCommit by rememberUpdatedState(onCommit)
     val latestTick by rememberUpdatedState(onTick)
+    var displayZoom by remember { mutableFloatStateOf(selected) }
+    LaunchedEffect(selected, minZoom, maxZoom) {
+        displayZoom = selected.coerceIn(minZoom, maxZoom.coerceAtLeast(minZoom))
+    }
     val latestMax by rememberUpdatedState(maxZoom.coerceAtLeast(minZoom))
     val latestMin by rememberUpdatedState(minZoom)
     var lastStep by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     var lastWhole by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val max = maxZoom.coerceAtLeast(minZoom + .01f)
-    val fraction = ((selected - minZoom) / (max - minZoom)).coerceIn(0f, 1f)
+    val fraction = ((displayZoom - minZoom) / (max - minZoom)).coerceIn(0f, 1f)
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.background(Color(0xE833293D), CircleShape)
+        Box(Modifier.background(PocamPalette.Graphite.copy(alpha = .86f), CircleShape)
             .padding(horizontal = 14.dp, vertical = 4.dp)) {
-            Text(String.format(java.util.Locale.US, "%.1f×", selected),
+            Text(String.format(java.util.Locale.US, "%.1f×", displayZoom),
                 color = accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
         Canvas(Modifier.fillMaxWidth().height(96.dp)
             
-            .pointerInput(maxZoom) {
+            .pointerInput(minZoom,maxZoom) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     fun update(x: Float) {
@@ -115,12 +122,16 @@ fun ZoomRail(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             lastWhole = whole
                             latestTick()
-                        } else if (step != lastStep && step % 4 == 0) {
+                        } else if (step != lastStep && step % 10 == 0) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             latestTick()
                         }
                         lastStep = step
-                        latestSelect(next.coerceIn(latestMin, latestMax))
+                        val clamped = next.coerceIn(latestMin, latestMax)
+                        if (kotlin.math.abs(clamped - displayZoom) >= .002f) {
+                            displayZoom = clamped
+                            latestSelect(clamped)
+                        }
                     }
                     update(down.position.x)
                     do {
@@ -131,6 +142,7 @@ fun ZoomRail(
                             change.consume()
                         }
                     } while (event.changes.any { it.id == down.id && it.pressed })
+                    latestCommit(displayZoom)
                 }
             }) {
             val pad = 46.dp.toPx()
@@ -198,7 +210,9 @@ fun StraightRuler(
     onValueChange: (Float) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    onDetent: () -> Unit = {}
+    onDetent: () -> Unit = {},
+    showLabel: Boolean = true,
+    compact: Boolean = false
 ) {
     val accent = cameraAccent()
     val haptics = LocalHapticFeedback.current
@@ -210,8 +224,8 @@ fun StraightRuler(
     val fraction = ((value - min) / (max - min)).coerceIn(0f, 1f)
     var previousDetent by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = accent, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        Canvas(Modifier.fillMaxWidth().height(46.dp)
+        if (showLabel) Text(label, color = accent, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Canvas(Modifier.fillMaxWidth().height(if (compact) 36.dp else 46.dp)
             .pointerInput(min, max) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)

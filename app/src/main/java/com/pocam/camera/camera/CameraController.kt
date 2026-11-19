@@ -1,6 +1,9 @@
 package com.pocam.camera.camera
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -124,8 +127,12 @@ class CameraController(private val context: Context) {
         val supportedAwbModes: Set<Int>
     )
 
+    private var cachedCapabilitiesCamera: Camera? = null
+    private var cachedCapabilities: ManualCapabilities? = null
     fun manualCapabilities(): ManualCapabilities? {
-        val info = camera?.cameraInfo ?: return null
+        val active = camera ?: return null
+        if (cachedCapabilitiesCamera === active) return cachedCapabilities
+        val info = active.cameraInfo
         val chars = Camera2CameraInfo.from(info)
         val iso = chars.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
         val exposure = chars.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
@@ -138,7 +145,10 @@ class CameraController(private val context: Context) {
             if (capabilities && iso != null) iso.lower..iso.upper else null,
             if (capabilities && exposure != null) exposure.lower..exposure.upper else null,
             focus, modes
-        )
+        ).also {
+            cachedCapabilitiesCamera = active
+            cachedCapabilities = it
+        }
     }
 
     fun setManualIso(value: Int?) {
@@ -169,7 +179,28 @@ class CameraController(private val context: Context) {
         applyManual()
     }
 
+    private val controlHandler = Handler(Looper.getMainLooper())
+    private var manualApplyPending = false
+    private var lastManualApplyMs = 0L
+    private val manualApplyTask = Runnable {
+        manualApplyPending = false
+        lastManualApplyMs = SystemClock.uptimeMillis()
+        applyManualNow()
+    }
+    private var zoomApplyPending = false
+    private var lastZoomApplyMs = 0L
+    private val zoomApplyTask = Runnable {
+        zoomApplyPending = false
+        lastZoomApplyMs = SystemClock.uptimeMillis()
+        camera?.cameraControl?.setZoomRatio(zoom)
+    }
     private fun applyManual() {
+        if (manualApplyPending) return
+        manualApplyPending = true
+        val wait = (33L - (SystemClock.uptimeMillis() - lastManualApplyMs)).coerceAtLeast(0L)
+        controlHandler.postDelayed(manualApplyTask, wait)
+    }
+    private fun applyManualNow() {
         val activeCamera = camera ?: return
         val caps = manualCapabilities() ?: return
         val builder = CaptureRequestOptions.Builder()
@@ -348,7 +379,11 @@ class CameraController(private val context: Context) {
         val clamped = if (state == null) ratio.coerceAtLeast(1f)
             else ratio.coerceIn(state.minZoomRatio, state.maxZoomRatio)
         zoom = clamped
-        camera?.cameraControl?.setZoomRatio(clamped)
+        if (!zoomApplyPending) {
+            zoomApplyPending = true
+            val wait = (33L - (SystemClock.uptimeMillis() - lastZoomApplyMs)).coerceAtLeast(0L)
+            controlHandler.postDelayed(zoomApplyTask, wait)
+        }
     }
 
     fun exposureIndex(): Int = camera?.cameraInfo?.exposureState?.exposureCompensationIndex ?: 0
@@ -479,6 +514,12 @@ class CameraController(private val context: Context) {
     }
 
     fun release() {
+        controlHandler.removeCallbacks(manualApplyTask)
+        controlHandler.removeCallbacks(zoomApplyTask)
+        manualApplyPending = false
+        zoomApplyPending = false
+        cachedCapabilitiesCamera = null
+        cachedCapabilities = null
         bindGeneration++
         recording?.stop()
         recording = null
