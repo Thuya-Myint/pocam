@@ -207,6 +207,38 @@ fun CameraScreen() {
         context.getSharedPreferences("pocam", 0).edit()
             .putString("last_media_uri", uri.toString()).apply()
     }
+    // Keep the decoded image cached while Settings is open; don't decode
+    // on every return to the camera controls.
+    val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        initialValue = null, key1 = lastPhoto) {
+        value = withContext(Dispatchers.IO) {
+            lastPhoto?.let { uri ->
+                try {
+                    // Decode near thumbnail size instead of allocating a
+                    // full-resolution photo (which causes GC stalls/OOM).
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        BitmapFactory.decodeStream(stream, null, bounds)
+                    }
+                    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null
+                    else {
+                        var sample = 1
+                        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 256) {
+                            sample *= 2
+                        }
+                        val options = BitmapFactory.Options().apply {
+                            inSampleSize = sample
+                            inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                        }
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream, null, options)?.asImageBitmap()
+                        }
+                    }
+                } catch (_: Exception) { null }
+            }
+        }
+    }
+
     var error by remember { mutableStateOf<String?>(null) }
     var editPhoto by remember { mutableStateOf<Uri?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -636,6 +668,7 @@ fun CameraScreen() {
         }
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
+        if (!showSettings && editPhoto == null) {
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
             .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -654,35 +687,6 @@ fun CameraScreen() {
                         } else editPhoto = uri
                     }
                 }, contentAlignment = Alignment.Center) {
-                val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
-                    initialValue = null, key1 = lastPhoto) {
-                    value = withContext(Dispatchers.IO) {
-                        lastPhoto?.let { uri ->
-                            try {
-                                // Decode near thumbnail size instead of allocating a
-                                // full-resolution photo (which causes GC stalls/OOM).
-                                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                                context.contentResolver.openInputStream(uri)?.use { stream ->
-                                    BitmapFactory.decodeStream(stream, null, bounds)
-                                }
-                                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null
-                                else {
-                                    var sample = 1
-                                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 256) {
-                                        sample *= 2
-                                    }
-                                    val options = BitmapFactory.Options().apply {
-                                        inSampleSize = sample
-                                        inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
-                                    }
-                                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                                        BitmapFactory.decodeStream(stream, null, options)?.asImageBitmap()
-                                    }
-                                }
-                            } catch (_: Exception) { null }
-                        }
-                    }
-                }
                 if (thumbnail != null) {
                     Image(bitmap = thumbnail!!, contentDescription = "Last captured photo",
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
@@ -774,7 +778,8 @@ fun CameraScreen() {
                     tint = Color.White)
             }
         }
-        if (recordingVideo) {
+        }
+        if (recordingVideo && !showSettings) {
             Text("● REC  ·  TAP SHUTTER TO STOP", color = Color(0xFFFF7777),
                 fontWeight = FontWeight.Bold, fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 170.dp)
