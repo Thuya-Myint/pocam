@@ -67,12 +67,6 @@ fun ViewfinderSettings(
         SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
         SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
         SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
-        if (exposureRange.first < exposureRange.last) {
-            Text("EXPOSURE  ${exposure}", color = Color.LightGray, fontSize = 11.sp)
-            Slider(value = exposure.toFloat().coerceIn(exposureRange.first.toFloat(), exposureRange.last.toFloat()),
-                valueRange = exposureRange.first.toFloat()..exposureRange.last.toFloat(),
-                onValueChange = { onExposure(it.roundToInt()) })
-        }
         Text("VIDEO RESOLUTION", color = Color.LightGray, fontSize = 11.sp,
             letterSpacing = 1.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {

@@ -18,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.ui.platform.LocalContext
@@ -76,9 +75,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 val isoValue = (isoRange.first + (isoRange.last - isoRange.first) *
                     isoFraction).roundToInt().coerceIn(isoRange)
                 Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
-                Slider(value = isoFraction, valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = accent,
-                        activeTrackColor = accent), onValueChange = {
+                StraightRuler(value = isoFraction, valueRange = 0f..1f, label = if (isoFraction == 0f) "AUTO" else "$isoValue", onValueChange = {
                     isoFraction = it
                     controller.setManualIso(if (it == 0f) null else isoValueFor(isoRange, it))
                 })
@@ -88,9 +85,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 Text(if (shutterFraction == 0f) "Shutter: AUTO"
                     else "Shutter: ${"%.1f".format(selectedNs / 1_000_000.0)} ms",
                     color = Color.White)
-                Slider(value = shutterFraction, valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = accent,
-                        activeTrackColor = accent), onValueChange = {
+                StraightRuler(value = shutterFraction, valueRange = 0f..1f, label = if (shutterFraction == 0f) "AUTO" else "${"%.1f".format(selectedNs / 1_000_000.0)} ms", onValueChange = {
                     shutterFraction = it
                     controller.setManualExposureNs(
                         if (it == 0f) null else shutterNs(minNs, maxNs, it))
@@ -102,9 +97,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 Text(if (focusFraction == 0f) "Focus: AUTO"
                     else "Focus: ${"%.2f".format(focusFraction * current.minFocusDistance)} D",
                     color = Color.White)
-                Slider(value = focusFraction,
-                    colors = SliderDefaults.colors(thumbColor = accent,
-                        activeTrackColor = accent), onValueChange = {
+                StraightRuler(value = focusFraction, valueRange = 0f..1f, label = if (focusFraction == 0f) "AUTO" else "${"%.2f".format(focusFraction * current.minFocusDistance)} D", onValueChange = {
                     focusFraction = it
                     controller.setManualFocus(if (it == 0f) null else
                         it * current.minFocusDistance)

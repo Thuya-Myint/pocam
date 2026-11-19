@@ -210,3 +210,80 @@ fun CaptureFlash(active: Boolean, modifier: Modifier = Modifier) {
         Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = .70f)))
     }
 }
+
+/** Flat, zoom-inspired ruler for exposure and Pro controls. */
+@Composable
+fun StraightRuler(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    onDetent: () -> Unit = {}
+) {
+    val accent = cameraAccent()
+    val haptics = LocalHapticFeedback.current
+    val currentSelect by rememberUpdatedState(onValueChange)
+    val currentDetent by rememberUpdatedState(onDetent)
+    val currentHaptics by rememberUpdatedState(haptics)
+    val min = valueRange.start
+    val max = valueRange.endInclusive.coerceAtLeast(min + .0001f)
+    val fraction = ((value - min) / (max - min)).coerceIn(0f, 1f)
+    var previousDetent by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, color = accent, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Canvas(Modifier.fillMaxWidth().height(46.dp)
+            .pointerInput(min, max) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    fun update(x: Float) {
+                        val margin = 12.dp.toPx()
+                        val f = ((x - margin) /
+                            (size.width - margin * 2f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                        val raw = min + f * (max - min)
+                        val nearest = kotlin.math.round(raw)
+                        val snap = kotlin.math.abs(raw - nearest) <= (max - min) * .012f
+                        val next = if (snap) nearest.coerceIn(min, max) else raw
+                        val detent = kotlin.math.round(f * 20f).toInt()
+                        if (detent != previousDetent) {
+                            previousDetent = detent
+                            currentHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            currentDetent()
+                        }
+                        currentSelect(next)
+                    }
+                    update(down.position.x)
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change != null && change.pressed) {
+                            update(change.position.x)
+                            change.consume()
+                        }
+                    } while (event.changes.any { it.id == down.id && it.pressed })
+                }
+            }) {
+            val pad = 12.dp.toPx()
+            val width = size.width - 2f * pad
+            val centerY = size.height * .58f
+            for (i in 0..60) {
+                val x = pad + width * i / 60f
+                val near = (1f - kotlin.math.abs(i / 60f - fraction) * 12f).coerceIn(0f, 1f)
+                val major = i % 10 == 0
+                val height = (if (major) 19f else 11f) + 8f * near
+                drawLine(
+                    if (near > 0f) accent.copy(alpha = .4f + .6f * near)
+                    else Color.White.copy(alpha = .58f),
+                    Offset(x, centerY - height.dp.toPx() / 2f),
+                    Offset(x, centerY + height.dp.toPx() / 2f),
+                    (if (major) 2f else 1.2f).dp.toPx(),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            }
+            val selectedX = pad + width * fraction
+            drawLine(accent, Offset(selectedX, 2.dp.toPx()),
+                Offset(selectedX, size.height - 2.dp.toPx()),
+                2.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        }
+    }
+}

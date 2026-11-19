@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import com.pocam.camera.ui.components.CameraGrid
+import com.pocam.camera.ui.components.StraightRuler
 import com.pocam.camera.ui.components.ZoomRail
 import com.pocam.camera.ui.components.CaptureFlash
 import com.pocam.camera.ui.components.FocusReticle
@@ -274,7 +275,7 @@ fun CameraScreen() {
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xEB111319))
-                .statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
@@ -345,6 +346,23 @@ fun CameraScreen() {
                             Spacer(Modifier.width(12.dp))
                             Text(if (crosshairEnabled) "Hide level guide" else "Show level guide",
                                 color = Color.White)
+                        }
+                        if (exposureRange.first < exposureRange.last) {
+                            Text("EXPOSURE  ${exposureIndex} EV STEPS", color = accent,
+                                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            StraightRuler(
+                                value = exposureIndex.toFloat(),
+                                valueRange = exposureRange.first.toFloat()..exposureRange.last.toFloat(),
+                                onValueChange = {
+                                    val next = it.toInt().coerceIn(exposureRange)
+                                    if (next != exposureIndex) {
+                                        exposureIndex = next
+                                        controller.setExposure(next)
+                                    }
+                                },
+                                label = "${exposureIndex}",
+                                onDetent = { playUiTone() }
+                            )
                         }
                         Text("CAPTURE TIMER", color = accent, fontSize = 11.sp,
                             fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
