@@ -1,5 +1,6 @@
 package com.pocam.camera.ui.screen
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -275,8 +276,12 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .statusBarsPadding().padding(top = 32.dp, start = 16.dp, end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                .statusBarsPadding().padding(top = 16.dp, start = 16.dp, end = 16.dp)
+                .shadow(12.dp, RoundedCornerShape(30.dp))
+                .background(Color(0xE9111319), RoundedCornerShape(30.dp))
+                .animateContentSize(animationSpec = tween(durationMillis = 340))
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(44.dp)
@@ -322,8 +327,8 @@ fun CameraScreen() {
                 }
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showMore,
-                    enter = fadeIn(tween(220)) + expandVertically(tween(280)),
-                    exit = fadeOut(tween(160)) + shrinkVertically(tween(230))
+                    enter = fadeIn(tween(260)) + expandVertically(animationSpec = tween(340), expandFrom = Alignment.Top),
+                    exit = fadeOut(tween(180)) + shrinkVertically(animationSpec = tween(260), shrinkTowards = Alignment.Top)
                 ) {
                     Column(Modifier.fillMaxWidth()
                         .shadow(10.dp, RoundedCornerShape(24.dp))
@@ -358,7 +363,7 @@ fun CameraScreen() {
                                     CircleShape).clickable {
                                         timerSeconds = seconds
                                         preferences.edit().putInt("timer", seconds).apply()
-                                    }.padding(horizontal = 17.dp, vertical = 11.dp),
+                                    },
                                     contentAlignment = Alignment.Center) {
                                     Text(if (seconds == 0) "OFF" else "${seconds}s",
                                         color = if (timerSeconds == seconds) Color.Black else Color.White,
@@ -387,8 +392,11 @@ fun CameraScreen() {
             }
         }
         // Dedicated full-screen settings page, not a floating dropdown.
-        if (showSettings && !wheelOpen) {
-            Column(Modifier.fillMaxSize().zIndex(30f)
+        AnimatedVisibility(visible = showSettings && !wheelOpen,
+            enter = slideInVertically(animationSpec = tween(360), initialOffsetY = { it / 4 }) + fadeIn(tween(320)),
+            exit = slideOutVertically(animationSpec = tween(280), targetOffsetY = { it / 4 }) + fadeOut(tween(220)),
+            modifier = Modifier.fillMaxSize().zIndex(30f)) {
+            Column(Modifier.fillMaxSize()
                 .background(Color(0xFF111319))
                 .statusBarsPadding().navigationBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
