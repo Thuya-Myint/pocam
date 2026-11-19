@@ -499,9 +499,9 @@ fun CameraScreen() {
             }
         }
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
-        if (!wheelOpen && !showProPanel && !showSettings && !shutterPressed && editPhoto == null) {
+        if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 204.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 260.dp, start = 22.dp, end = 22.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -578,6 +578,43 @@ fun CameraScreen() {
             }
         }
 
+        // Mode strip stays directly above the shutter dock. A long shutter press
+        // highlights the mode being scrubbed without opening the old radial wheel.
+        if (!showSettings && editPhoto == null) {
+            Row(Modifier.align(Alignment.BottomCenter).zIndex(13f)
+                .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, bottom = 150.dp)
+                .fillMaxWidth().background(Color(0xE91E1E26), CircleShape)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically) {
+                listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
+                    CameraMode.PRO, CameraMode.PORTRAIT).forEach { candidate ->
+                    val selected = (if (wheelOpen) wheelHover else mode) == candidate
+                    Box(Modifier.weight(1f)
+                        .background(if (selected) accent else Color.Transparent, CircleShape)
+                        .clickable(enabled = !captureBusy && !recordingVideo) {
+                            if (candidate != mode) {
+                                previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                if (mode == CameraMode.PRO) controller.resetManual()
+                                mode = candidate
+                                showProPanel = candidate == CameraMode.PRO
+                                showMore = false
+                                previewView?.let { view ->
+                                    controller.bind(owner, view, { error = it }, {
+                                        cameraGeneration++
+                                        exposureRange = controller.exposureRange()
+                                        maxZoom = controller.maxZoom()
+                                    }, candidate)
+                                }
+                            }
+                        }.padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center) {
+                        Text(candidate.name, color = if (selected) Color.Black else Color.White,
+                            fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                    }
+                }
+            }
+        }
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
@@ -628,12 +665,9 @@ fun CameraScreen() {
             // Fixed shutter position: wheel and shutter always share one center.
             // Align the wheel's bottom edge with the user's marked guide (~34dp below prior position).
             // Do not animate or move the shutter on long press.
-            Box(Modifier.size(88.dp).offset(y = (-70).dp),
+            Box(Modifier.size(88.dp),
                 contentAlignment = Alignment.Center) {
-                androidx.compose.animation.AnimatedVisibility(visible = wheelOpen, enter = fadeIn(tween(160)) + scaleIn(tween(200)),
-                    exit = fadeOut(tween(130)) + scaleOut(tween(160))) {
-                    RadialModeWheel(wheelHover, Modifier.zIndex(1f))
-                }
+
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
                     onCapture = {
