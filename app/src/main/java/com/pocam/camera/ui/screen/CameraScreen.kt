@@ -454,16 +454,6 @@ fun CameraScreen() {
             Column(Modifier.fillMaxSize()
                 .background(Color(0xFF111319))
                 .statusBarsPadding().navigationBarsPadding()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { showSettings = false }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Back to camera",
-                            tint = Color.White)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text("Settings", color = Color.White, fontSize = 22.sp,
-                        fontWeight = FontWeight.SemiBold)
-                }
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp)) {
             ViewfinderSettings(
