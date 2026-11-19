@@ -82,7 +82,7 @@ fun ViewfinderSettings(
                 SettingsGroup("Capture", Icons.Rounded.PhotoLibrary, accent) {
                     SettingsChoice(Icons.Rounded.PhotoLibrary, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
                     SettingsChoice(Icons.Rounded.PhotoLibrary, "Image format", imageFormat) { dialog = "Image format" }
-                    SettingsToggle(Icons.Rounded.Tune, "HDR", "Improve highlight and shadow detail", hdr, accent) { hdr = it }
+                    SettingsToggle(Icons.Rounded.Tune, "HDR", "Improve highlight and shadow detail", hdr, accent, onCheckedChange = { hdr = it })
                     SettingsToggle(Icons.Rounded.GridOn, "Grid lines", "Rule of thirds", grid, accent, onGrid)
                     SettingsToggle(Icons.Rounded.GridOn, "Level guide", "Keep photos straight", level, accent, onLevel)
                 }
@@ -101,13 +101,13 @@ fun ViewfinderSettings(
             }
             "Camera" -> SettingsGroup("Camera", Icons.Rounded.Tune, accent) {
                 SettingsToggle(Icons.Rounded.FlashOn, "Live torch", "Use camera light", torch, accent, onTorch, torchAvailable)
-                SettingsToggle(Icons.Rounded.Tune, "Shutter sound", "Play sound when taking a photo", shutterSound, accent) { shutterSound = it }
-                SettingsToggle(Icons.Rounded.Tune, "Focus tracking", "Track moving subjects", focusTracking, accent) { focusTracking = it }
+                SettingsToggle(Icons.Rounded.Tune, "Shutter sound", "Play sound when taking a photo", shutterSound, accent, onCheckedChange = { shutterSound = it })
+                SettingsToggle(Icons.Rounded.Tune, "Focus tracking", "Track moving subjects", focusTracking, accent, onCheckedChange = { focusTracking = it })
                 SettingsChoice(Icons.Rounded.Tune, "Exposure", "${exposure} steps") { dialog = "Exposure" }
             }
             "Video" -> SettingsGroup("Video", Icons.Rounded.Videocam, accent) {
                 SettingsChoice(Icons.Rounded.Videocam, "Video resolution", videoQuality) { dialog = "Video resolution" }
-                SettingsToggle(Icons.Rounded.Videocam, "Video stabilization", "Reduce shake while recording", stabilization, accent) { stabilization = it }
+                SettingsToggle(Icons.Rounded.Videocam, "Video stabilization", "Reduce shake while recording", stabilization, accent, onCheckedChange = { stabilization = it })
             }
             else -> SettingsGroup("Appearance", Icons.Rounded.Tune, accent) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
