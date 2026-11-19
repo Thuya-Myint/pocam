@@ -486,9 +486,9 @@ fun CameraScreen() {
                 }
             }
             // Fixed shutter position: wheel and shutter always share one center.
-            // Keep approximately 20dp clearance below the 300dp wheel when it is shown.
+            // Align the wheel's bottom edge with the user's marked guide (~34dp below prior position).
             // Do not animate or move the shutter on long press.
-            Box(Modifier.size(88.dp).offset(y = (-106).dp),
+            Box(Modifier.size(88.dp).offset(y = (-72).dp),
                 contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
