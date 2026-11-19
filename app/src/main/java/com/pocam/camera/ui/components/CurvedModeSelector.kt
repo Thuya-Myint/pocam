@@ -65,6 +65,7 @@ fun CurvedModeSelector(
         label = "mode-selection"
     )
     val latestSelect by rememberUpdatedState(onSelect)
+    val latestSelected by rememberUpdatedState(selected)
     val haptics = LocalHapticFeedback.current
 
     Canvas(modifier.fillMaxWidth().height(116.dp)
@@ -72,7 +73,7 @@ fun CurvedModeSelector(
             detectTapGestures { offset ->
                 val index = ((offset.x / size.width.toFloat().coerceAtLeast(1f)) * modes.size)
                     .toInt().coerceIn(0, modes.lastIndex)
-                if (modes[index] != selected) {
+                if (modes[index] != latestSelected) {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     latestSelect(modes[index])
                 }
