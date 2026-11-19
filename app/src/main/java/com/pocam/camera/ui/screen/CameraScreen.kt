@@ -487,25 +487,13 @@ fun CameraScreen() {
             }
             Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
-                    // Keep the mode wheel below the shutter and feather its lower edge.
-                    // It must not cover the gallery and camera-switch actions.
-                    RadialModeWheel(wheelHover, Modifier.zIndex(1f)
-                        .offset(y = 105.dp)
-                        .graphicsLayer {
-                            compositingStrategy = CompositingStrategy.Offscreen
-                        }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to Color.White,
-                                    .34f to Color.White,
-                                    .65f to Color.White.copy(alpha = .55f),
-                                    1f to Color.Transparent
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        })
+                    // The 300dp wheel is centered 86dp above the shutter center.
+                    // With the shutter dock 60dp above the bottom, this leaves
+                    // approximately 40dp below the full wheel, not a clipped half-wheel.
+                    RadialModeWheel(
+                        wheelHover,
+                        Modifier.zIndex(1f).offset(y = (-86).dp)
+                    )
                 }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
