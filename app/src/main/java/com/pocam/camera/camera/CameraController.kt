@@ -304,13 +304,11 @@ class CameraController(private val context: Context) {
                 if (mode == CameraMode.PRO) applyManual()
                 onCameraReady?.invoke()
             } catch (e: Exception) {
-                        Log.e("PocamCamera", "Camera binding failed", e)
-                        onError(e.message ?: "Unable to configure camera")
-                    }
-                }, ContextCompat.getMainExecutor(context))
-            } catch (e: Exception) {
-                Log.e("PocamCamera", "Camera startup failed", e)
-                onError(e.message ?: "Unable to start camera")
+                camera = null
+                boundFront = null
+                boundLensId = null
+                Log.e("PocamCamera", "Camera binding failed", e)
+                onError(e.message ?: "Unable to configure camera")
             }
         }, ContextCompat.getMainExecutor(context))
     }
