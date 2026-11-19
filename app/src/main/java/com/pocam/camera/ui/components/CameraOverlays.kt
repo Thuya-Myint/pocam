@@ -101,8 +101,8 @@ fun ZoomRail(
             Text(String.format(java.util.Locale.US, "%.1f×", selected),
                 color = accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
-        Canvas(Modifier.fillMaxWidth().height(44.dp)
-            .background(Color(0xD91B1B23), CircleShape)
+        Canvas(Modifier.fillMaxWidth().height(96.dp)
+            
             .pointerInput(maxZoom) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -139,23 +139,40 @@ fun ZoomRail(
             }) {
             val pad = 46.dp.toPx()
             val usable = (size.width - pad * 2f).coerceAtLeast(1f)
-            val cy = size.height / 2f
+            // A true arched ruler: ticks, indicator and glass backing share the same path.
+            val arch = 34.dp.toPx()
+            fun arcY(f: Float): Float = size.height * .80f -
+                arch * (1f - 4f * (f - .5f) * (f - .5f))
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(pad - 18.dp.toPx(), arcY(0f) + 16.dp.toPx())
+                for (i in 0..80) {
+                    val f = i / 80f
+                    lineTo(pad + usable * f, arcY(f) - 18.dp.toPx())
+                }
+                lineTo(pad + usable + 18.dp.toPx(), arcY(1f) + 16.dp.toPx())
+                close()
+            }
+            drawPath(path, Color(0xA51B1B23))
             for (i in 0..70) {
                 val f = i / 70f
                 val x = pad + usable * f
+                val y = arcY(f)
                 val major = i % 10 == 0
                 val nearby = (1f - kotlin.math.abs(f - fraction) * 15f).coerceIn(0f, 1f)
-                val h = (if (major) 18f else 9f) + nearby * 7f
-                drawLine(if (f <= fraction) accent.copy(alpha = .55f + nearby * .4f)
-                    else Color.White.copy(alpha = .6f),
-                    Offset(x, cy - h.dp.toPx() / 2f),
-                    Offset(x, cy + h.dp.toPx() / 2f),
-                    (if (major) 1.8f else 1.1f).dp.toPx())
+                val h = (if (major) 17f else 8f) + nearby * 6f
+                val edgeFade = (kotlin.math.min(f, 1f - f) * 6f).coerceIn(.12f, 1f)
+                drawLine(
+                    if (f <= fraction) accent.copy(alpha = (.5f + nearby * .4f) * edgeFade)
+                    else Color.White.copy(alpha = .65f * edgeFade),
+                    Offset(x, y - h.dp.toPx() / 2f),
+                    Offset(x, y + h.dp.toPx() / 2f),
+                    (if (major) 1.8f else 1.1f).dp.toPx()
+                )
             }
             val x = pad + usable * fraction
-            drawCircle(accent, radius = 9.dp.toPx(), center = Offset(x, cy))
-            drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(x, cy))
-        }
+            val y = arcY(fraction)
+            drawCircle(accent, radius = 9.dp.toPx(), center = Offset(x, y))
+            drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(x, y))}
     }
 }
 
