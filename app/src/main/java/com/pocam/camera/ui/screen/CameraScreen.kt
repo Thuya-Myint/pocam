@@ -576,12 +576,12 @@ fun CameraScreen() {
         if (!showSettings && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(13f)
                 .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, bottom = 150.dp)
-                .fillMaxWidth().height(110.dp)) {
+                .fillMaxWidth().height(140.dp)) {
                 Canvas(Modifier.fillMaxSize()) {
                     val path = Path()
-                    val top = 16.dp.toPx()
-                    val arch = 32.dp.toPx()
-                    val thickness = 48.dp.toPx()
+                    val top = 4.dp.toPx()
+                    val arch = 58.dp.toPx()
+                    val thickness = 52.dp.toPx()
                     path.moveTo(0f, top + arch)
                     for (i in 0..80) {
                         val t = i / 80f
@@ -596,7 +596,7 @@ fun CameraScreen() {
                         path.lineTo(x, y)
                     }
                     path.close()
-                    drawPath(path, Color(0x961E1E26))
+                    drawPath(path, Color(0x8A1E1E26))
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -605,7 +605,7 @@ fun CameraScreen() {
                     CameraMode.PRO, CameraMode.PORTRAIT).forEachIndexed { index, candidate ->
                     val selected = (if (wheelOpen) wheelHover else mode) == candidate
                     Box(Modifier.weight(1f)
-                        .offset(y = (16 + 32 * (4f * ((index + .5f) / 5f - .5f) *
+                        .offset(y = (4 + 58 * (4f * ((index + .5f) / 5f - .5f) *
                             ((index + .5f) / 5f - .5f))).dp)
                         .background(if (selected) accent else Color.Transparent, CircleShape)
                         .clickable(enabled = !captureBusy && !recordingVideo) {
