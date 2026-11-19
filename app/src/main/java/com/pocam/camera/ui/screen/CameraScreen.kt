@@ -253,8 +253,6 @@ fun CameraScreen() {
                                     if (!focusLocked) {
                                         controller.lockFocusAt(view, downX, downY)
                                         focusLocked = controller.isFocusLocked()
-                                focusLockPoint = if (focusLocked) Pair(0.5f, 0.5f) else null
-                                focusPoint = focusLockPoint
                                         if (focusLocked) {
                                             focusPoint = Pair(downX / view.width.coerceAtLeast(1),
                                                 downY / view.height.coerceAtLeast(1))
@@ -288,7 +286,6 @@ fun CameraScreen() {
                                             kotlin.math.abs(event.y - point.second * view.height) < 60f) {
                                             controller.unlockFocus()
                                             focusLocked = false
-                        focusLockPoint = null
                                             focusLockPoint = null
                                             focusPoint = null
                                             v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -339,7 +336,7 @@ fun CameraScreen() {
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xEB111319))
-                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 34.dp, bottom = 24.dp),
+                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 44.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
