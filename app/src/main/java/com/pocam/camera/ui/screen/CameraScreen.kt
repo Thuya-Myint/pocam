@@ -642,6 +642,7 @@ fun CameraScreen() {
                 }
             }
         }
+        }
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
