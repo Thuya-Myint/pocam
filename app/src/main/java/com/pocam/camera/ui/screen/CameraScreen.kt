@@ -367,7 +367,8 @@ fun CameraScreen() {
                     previewView?.let { view ->
                         if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
                         focusLocked = controller.isFocusLocked()
-                    }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    }
+                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
                         contentDescription = null, tint = accent)
                     Spacer(Modifier.width(12.dp))
