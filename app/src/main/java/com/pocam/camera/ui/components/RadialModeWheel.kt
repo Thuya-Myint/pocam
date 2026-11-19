@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -73,9 +74,14 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
                 }
                 path.close()
                 val isActive = i == index
-                drawPath(path, if (isActive) accent.copy(alpha = .62f)
-                    else Color(0xEE202733))
-                drawPath(path, if (isActive) accent else Color.White.copy(alpha = .16f),
+                // Fade sectors gradually near the horizontal edges of the dial.
+                val angle = Math.toRadians(mid.toDouble())
+                val edgeFactor = kotlin.math.abs(kotlin.math.sin(angle)).toFloat()
+                val feather = .10f + .90f * edgeFactor * edgeFactor * (3f - 2f * edgeFactor)
+                drawPath(path, if (isActive) accent.copy(alpha = .62f * feather)
+                    else Color(0xFF202733).copy(alpha = .88f * feather))
+                drawPath(path, if (isActive) accent.copy(alpha = feather)
+                    else Color.White.copy(alpha = .16f * feather),
                     style = Stroke(1.2.dp.toPx()))
             }
             drawCircle(Color(0xFF101720), inner)
@@ -85,10 +91,13 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
             val rad = Math.toRadians((-90f + i * 60f + rotation).toDouble())
             val x = (105 * cos(rad)).dp
             val y = (105 * sin(rad)).dp
+            val edgeFactor = kotlin.math.abs(kotlin.math.sin(rad)).toFloat()
+            val feather = .12f + .88f * edgeFactor * edgeFactor * (3f - 2f * edgeFactor)
             Text(modeSymbol(mode), color = if (i == index) Color.Black else Color.White,
                 fontSize = 23.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.Center)
-                    .then(Modifier.offset(x = x, y = y)))
+                    .offset(x = x, y = y)
+                    .graphicsLayer { alpha = feather })
         }
         Text(selected.name, color = Color.White, fontSize = 13.sp,
             fontWeight = FontWeight.Bold)
