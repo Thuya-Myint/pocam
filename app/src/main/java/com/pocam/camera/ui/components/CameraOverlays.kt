@@ -82,17 +82,17 @@ fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifi
 
 @Composable
 fun ZoomRail(
-    selected: Float, maxZoom: Float, onSelect: (Float) -> Unit,
+    selected: Float, minZoom: Float = 1f, maxZoom: Float, onSelect: (Float) -> Unit,
     onTick: () -> Unit = {}, modifier: Modifier = Modifier
 ) {
     val accent = cameraAccent()
     val haptics = LocalHapticFeedback.current
     val latestSelect by rememberUpdatedState(onSelect)
     val latestTick by rememberUpdatedState(onTick)
-    val latestMax by rememberUpdatedState(maxZoom.coerceAtLeast(1f))
+    val latestMax by rememberUpdatedState(maxZoom.coerceAtLeast(minZoom))
+    val latestMin by rememberUpdatedState(minZoom)
     var lastStep by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     var lastWhole by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
-    val minZoom = 1f
     val max = maxZoom.coerceAtLeast(minZoom + .01f)
     val fraction = ((selected - minZoom) / (max - minZoom)).coerceIn(0f, 1f)
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -110,7 +110,7 @@ fun ZoomRail(
                         val pad = 46.dp.toPx()
                         val f = ((x - pad) / (size.width - 2f * pad).coerceAtLeast(1f))
                             .coerceIn(0f, 1f)
-                        val raw = 1f + f * (latestMax - 1f)
+                        val raw = latestMin + f * (latestMax - latestMin)
                         val whole = kotlin.math.round(raw).toInt()
                         val snap = kotlin.math.abs(raw - whole) <= .055f
                         val next = if (snap) whole.toFloat() else raw
@@ -124,7 +124,7 @@ fun ZoomRail(
                             latestTick()
                         }
                         lastStep = step
-                        latestSelect(next.coerceIn(1f, latestMax))
+                        latestSelect(next.coerceIn(latestMin, latestMax))
                     }
                     update(down.position.x)
                     do {
@@ -143,16 +143,26 @@ fun ZoomRail(
             val arch = 34.dp.toPx()
             fun arcY(f: Float): Float = size.height * .80f -
                 arch * (1f - 4f * (f - .5f) * (f - .5f))
+            val bandHalf = 14.dp.toPx()
             val path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(pad - 18.dp.toPx(), arcY(0f) + 16.dp.toPx())
-                for (i in 0..80) {
+                moveTo(pad, arcY(0f) - bandHalf)
+                for (i in 1..80) {
                     val f = i / 80f
-                    lineTo(pad + usable * f, arcY(f) - 18.dp.toPx())
+                    lineTo(pad + usable * f, arcY(f) - bandHalf)
                 }
-                lineTo(pad + usable + 18.dp.toPx(), arcY(1f) + 16.dp.toPx())
+                for (i in 80 downTo 0) {
+                    val f = i / 80f
+                    lineTo(pad + usable * f, arcY(f) + bandHalf)
+                }
                 close()
             }
-            drawPath(path, Color(0xA51B1B23))
+            drawPath(path, androidx.compose.ui.graphics.Brush.horizontalGradient(
+                0f to Color.Transparent,
+                .13f to Color(0xA51B1B23),
+                .5f to Color(0xB51B1B23),
+                .87f to Color(0xA51B1B23),
+                1f to Color.Transparent
+            ))
             for (i in 0..70) {
                 val f = i / 70f
                 val x = pad + usable * f

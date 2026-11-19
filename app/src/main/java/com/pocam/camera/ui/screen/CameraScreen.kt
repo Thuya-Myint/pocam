@@ -26,6 +26,7 @@ import kotlinx.coroutines.Job
 import com.pocam.camera.ui.components.CameraGrid
 import com.pocam.camera.ui.components.StraightRuler
 import com.pocam.camera.ui.components.ZoomRail
+import com.pocam.camera.ui.components.CurvedModeSelector
 import com.pocam.camera.ui.components.CaptureFlash
 import com.pocam.camera.ui.components.FocusReticle
 import androidx.compose.animation.core.tween
@@ -162,6 +163,7 @@ fun CameraScreen() {
     var exposureRange by remember { mutableStateOf(0..0) }
     var zoom by remember { mutableStateOf(1f) }
     var maxZoom by remember { mutableStateOf(4f) }
+    var minZoom by remember { mutableStateOf(1f) }
     var activeLensId by remember { mutableStateOf<String?>(null) }
     var activeFocalMm by remember { mutableStateOf<Float?>(null) }
     var showProPanel by remember { mutableStateOf(false) }
@@ -238,6 +240,7 @@ fun CameraScreen() {
                         cameraGeneration++
                         exposureRange = controller.exposureRange()
                         maxZoom = controller.maxZoom()
+                        minZoom = controller.minZoom()
                         activeLensId = controller.activeCameraId()
                         activeFocalMm = controller.activeFocalLength()
                     })
@@ -498,7 +501,7 @@ fun CameraScreen() {
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
         if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 260.dp, start = 22.dp, end = 22.dp)) {
+                .navigationBarsPadding().padding(bottom = 310.dp, start = 22.dp, end = 22.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -515,6 +518,7 @@ fun CameraScreen() {
                                     controller.bind(owner, view, { error = it }, {
                                         cameraGeneration++
                                         maxZoom = controller.maxZoom()
+                                        minZoom = controller.minZoom()
                                         activeLensId = controller.activeCameraId()
                                         activeFocalMm = controller.activeFocalLength()
                                     }, mode)
@@ -526,7 +530,7 @@ fun CameraScreen() {
                         }
                     }
                 }
-                ZoomRail(zoom, maxZoom = maxZoom, onSelect = { value ->
+                ZoomRail(zoom, minZoom = minZoom, maxZoom = maxZoom, onSelect = { value ->
                     zoom = value
                     controller.setZoom(value)
                 }, onTick = { playUiTone() })
@@ -575,66 +579,35 @@ fun CameraScreen() {
             }
         }
 
-        // Mode strip stays directly above the shutter dock. A long shutter press
-        // highlights the mode being scrubbed without opening the old radial wheel.
+        // A single renderer owns the background, curve, selected pill and labels.
+        // This avoids overlap and ensures the highlight follows the exact same arc.
         if (!showSettings && editPhoto == null) {
-            Box(Modifier.align(Alignment.BottomCenter).zIndex(13f)
-                .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, bottom = 150.dp)
-                .fillMaxWidth().height(140.dp)) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val path = Path()
-                    val top = 4.dp.toPx()
-                    val arch = 58.dp.toPx()
-                    val thickness = 52.dp.toPx()
-                    path.moveTo(0f, top + arch)
-                    for (i in 0..80) {
-                        val t = i / 80f
-                        val x = size.width * t
-                        val y = top + arch * (4f * (t - .5f) * (t - .5f))
-                        path.lineTo(x, y)
-                    }
-                    for (i in 80 downTo 0) {
-                        val t = i / 80f
-                        val x = size.width * t
-                        val y = top + arch * (4f * (t - .5f) * (t - .5f)) + thickness
-                        path.lineTo(x, y)
-                    }
-                    path.close()
-                    drawPath(path, Color(0x8A1E1E26))
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.Top) {
-                listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
-                    CameraMode.PRO, CameraMode.PORTRAIT).forEachIndexed { index, candidate ->
-                    val selected = (if (wheelOpen) wheelHover else mode) == candidate
-                    Box(Modifier.weight(1f)
-                        .offset(y = (4 + 58 * (4f * ((index + .5f) / 5f - .5f) *
-                            ((index + .5f) / 5f - .5f))).dp)
-                        .background(if (selected) accent else Color.Transparent, CircleShape)
-                        .clickable(enabled = !captureBusy && !recordingVideo) {
-                            if (candidate != mode) {
-                                previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                if (mode == CameraMode.PRO) controller.resetManual()
-                                mode = candidate
-                                showProPanel = candidate == CameraMode.PRO
-                                showMore = false
-                                previewView?.let { view ->
-                                    controller.bind(owner, view, { error = it }, {
-                                        cameraGeneration++
-                                        exposureRange = controller.exposureRange()
-                                        maxZoom = controller.maxZoom()
-                                    }, candidate)
-                                }
-                            }
-                        }.padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center) {
-                        Text(candidate.name, color = if (selected) Color.Black else Color.White,
-                            fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+            CurvedModeSelector(
+                selected = mode,
+                hovered = if (wheelOpen) wheelHover else null,
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
+                    .navigationBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 150.dp),
+                onSelect = { candidate ->
+                    if (candidate != mode && !captureBusy && !recordingVideo) {
+                        previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        if (mode == CameraMode.PRO) controller.resetManual()
+                        mode = candidate
+                        focusLocked = false
+                        focusLockPoint = null
+                        showProPanel = candidate == CameraMode.PRO
+                        showMore = false
+                        previewView?.let { view ->
+                            controller.bind(owner, view, { error = it }, {
+                                cameraGeneration++
+                                exposureRange = controller.exposureRange()
+                                maxZoom = controller.maxZoom()
+                                minZoom = controller.minZoom()
+                            }, candidate)
+                        }
                     }
                 }
-            }
-        }
+            )
         }
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
@@ -752,6 +725,7 @@ fun CameraScreen() {
                                 cameraGeneration++
                                 exposureRange = controller.exposureRange()
                                 maxZoom = controller.maxZoom()
+                                minZoom = controller.minZoom()
                             activeLensId = controller.activeCameraId()
                             activeFocalMm = controller.activeFocalLength()
                             }, it)
@@ -776,6 +750,7 @@ fun CameraScreen() {
                             exposureRange = controller.exposureRange()
                             exposureIndex = 0
                             maxZoom = controller.maxZoom()
+                            minZoom = controller.minZoom()
                         }
                         zoom = 1f
                         focusLocked = false
