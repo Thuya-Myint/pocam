@@ -37,8 +37,8 @@ fun ShutterButton(
     val latestSound by rememberUpdatedState(onSound)
 
     Box(
-        Modifier.size(88.dp)
-            .border(3.dp, PocamPalette.Orange.copy(alpha=.95f), CircleShape)
+        Modifier.size(74.dp)
+            .border(2.5.dp, PocamPalette.Orange.copy(alpha=.97f), CircleShape)
             .background(Color(0xFF202126), CircleShape)
             .semantics {
                 contentDescription = if (recording) "Stop recording"
@@ -53,7 +53,7 @@ fun ShutterButton(
         contentAlignment = Alignment.Center
     ) {
         Box(
-            Modifier.size(if (recording) 40.dp else 70.dp)
+            Modifier.size(if (recording) 34.dp else 58.dp)
                 .background(
                     if (recording) Brush.linearGradient(listOf(Color(0xFFE43A1D),PocamPalette.Orange))
                     else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF6F6F6))),
