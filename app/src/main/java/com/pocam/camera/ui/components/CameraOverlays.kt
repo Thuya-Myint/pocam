@@ -84,47 +84,34 @@ fun ZoomRail(
     onTick: () -> Unit = {}, modifier: Modifier = Modifier
 ) {
     val accent = cameraAccent()
-    val safeMax = maxZoom.coerceAtLeast(1f)
+    val safeMax = maxZoom.coerceAtLeast(1.01f)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestTick by rememberUpdatedState(onTick)
     val latestMax by rememberUpdatedState(safeMax)
     var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
-    val fraction = ((selected - 1f) / (safeMax - 1f).coerceAtLeast(.001f)).coerceIn(0f, 1f)
-    val animated by animateFloatAsState(fraction, tween(90), label = "continuous zoom")
+    val fraction = ((selected - 1f) / (safeMax - 1f)).coerceIn(0f, 1f)
+    val animated by animateFloatAsState(fraction,
+        androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = 320f), label = "zoom dial")
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.background(Color(0xE91B1F28), RoundedCornerShape(30.dp))
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            listOf(1f, 2f, 4f).filter { it <= safeMax + .01f }.forEach { value ->
-                val active = kotlin.math.abs(selected - value) < .12f
-                Box(Modifier.size(40.dp)
-                    .background(if (active) accent else Color.Transparent, CircleShape)
-                    .clickable { onSelect(value) }, contentAlignment = Alignment.Center) {
-                    Text("${value.toInt()}×", color = if (active) Color.Black else Color.White,
-                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-            Text(String.format(java.util.Locale.US, "%.1f×", selected),
-                color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 7.dp))
-        }
-        Box(Modifier.width(260.dp).height(52.dp)
-            .background(Color(0xE91B1F28), RoundedCornerShape(26.dp))
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(String.format(java.util.Locale.US, "%.1f×", selected),
+            color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.background(Color(0xD91B1F28), RoundedCornerShape(20.dp))
+                .padding(horizontal = 18.dp, vertical = 5.dp))
+        Box(Modifier.width(300.dp).height(108.dp)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     fun update(x: Float) {
-                        val normalized = ((x - 22.dp.toPx()) /
-                            (size.width - 44.dp.toPx()).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                        val next = 1f + normalized * (latestMax - 1f)
-                        val tick = (normalized * 24).toInt()
+                        val normalized = (x / size.width).coerceIn(0f, 1f)
+                        val tick = (normalized * 48).toInt()
                         if (tick != lastTick) {
                             lastTick = tick
                             latestTick()
                         }
-                        latestSelect(next)
+                        latestSelect(1f + normalized * (latestMax - 1f))
                     }
                     update(down.position.x)
                     do {
@@ -137,23 +124,32 @@ fun ZoomRail(
                     } while (event.changes.any { it.id == down.id && it.pressed })
                 }
             }, contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 22.dp)) {
-                val center = size.height / 2f
-                drawLine(Color.White.copy(alpha = .28f),
-                    Offset(0f, center), Offset(size.width, center), 3.dp.toPx())
-                drawLine(accent, Offset(0f, center),
-                    Offset(size.width * animated, center), 3.dp.toPx())
-                for (i in 0..24) {
-                    val x = size.width * i / 24f
-                    drawLine(Color.White.copy(alpha = if (i / 24f <= animated) .85f else .28f),
-                        Offset(x, center - if (i % 4 == 0) 8.dp.toPx() else 4.dp.toPx()),
-                        Offset(x, center + if (i % 4 == 0) 8.dp.toPx() else 4.dp.toPx()),
-                        1.dp.toPx())
+            Canvas(Modifier.fillMaxSize()) {
+                val cx = size.width / 2f
+                val radius = size.width * .62f
+                val cy = size.height + radius * .58f
+                drawArc(Color(0xE91B1F28), 198f, 144f, false,
+                    topLeft = Offset(cx - radius, cy - radius),
+                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
+                    style = Stroke(44.dp.toPx()))
+                for (i in 0..48) {
+                    val theta = Math.toRadians((198f + 144f * i / 48f).toDouble())
+                    val major = i % 8 == 0
+                    val r1 = radius - if (major) 24.dp.toPx() else 17.dp.toPx()
+                    val r2 = radius - 7.dp.toPx()
+                    val x1 = cx + r1 * kotlin.math.cos(theta).toFloat()
+                    val y1 = cy + r1 * kotlin.math.sin(theta).toFloat()
+                    val x2 = cx + r2 * kotlin.math.cos(theta).toFloat()
+                    val y2 = cy + r2 * kotlin.math.sin(theta).toFloat()
+                    drawLine(if (i / 48f <= animated) accent else Color.White.copy(alpha = .38f),
+                        Offset(x1, y1), Offset(x2, y2),
+                        if (major) 2.dp.toPx() else 1.dp.toPx())
                 }
-                drawCircle(accent, 9.dp.toPx(),
-                    Offset(size.width * animated, center))
-                drawCircle(Color.White, 3.dp.toPx(),
-                    Offset(size.width * animated, center))
+                val theta = Math.toRadians((198f + 144f * animated).toDouble())
+                val x = cx + (radius - 17.dp.toPx()) * kotlin.math.cos(theta).toFloat()
+                val y = cy + (radius - 17.dp.toPx()) * kotlin.math.sin(theta).toFloat()
+                drawCircle(accent, 5.dp.toPx(), Offset(x, y))
+                drawCircle(Color.White, 2.dp.toPx(), Offset(x, y))
             }
         }
     }
