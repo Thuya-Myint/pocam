@@ -63,6 +63,13 @@ fun CurvedModeSelector(
     val latestSelect by rememberUpdatedState(onSelect)
     val latestSelected by rememberUpdatedState(selected)
     val haptics = LocalHapticFeedback.current
+    // Native Paint and Typeface are expensive to allocate every animation frame.
+    val labelPaint = remember {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        }
+    }
 
     Canvas(modifier.fillMaxWidth().height(116.dp)
         .pointerInput(Unit) {
@@ -130,11 +137,8 @@ fun CurvedModeSelector(
             )
         }
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textAlign = Paint.Align.CENTER
-            textSize = 11.sp.toPx()
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        }
+        val paint = labelPaint
+        paint.textSize = 11.sp.toPx()
         val native = drawContext.canvas.nativeCanvas
         modes.forEachIndexed { index, candidate ->
             val center = itemCenter(index.toFloat())
