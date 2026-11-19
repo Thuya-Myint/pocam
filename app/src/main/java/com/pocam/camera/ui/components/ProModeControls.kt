@@ -89,7 +89,7 @@ fun ProControlRail(
         labels.forEach { (key, value) ->
             val active = (if (state.selected == "SHUTTER") "S" else state.selected) == key
             Column(
-                Modifier.fillMaxWidth().height(46.dp)
+                Modifier.fillMaxWidth().height(58.dp)
                     .background(if (active) Color(0x331F1A17) else Color.Transparent, CircleShape)
                     .border(if (active) 0.85.dp else 0.dp,
                         if (active) PocamPalette.Orange else Color.Transparent, CircleShape)
