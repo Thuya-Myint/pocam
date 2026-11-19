@@ -124,7 +124,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
-import com.pocam.camera.ui.components.RadialModeWheel
 import com.pocam.camera.ui.components.ShutterButton
 import com.pocam.camera.ui.components.ManualControls
 import com.pocam.camera.ui.components.PhotoEditor
@@ -244,7 +243,7 @@ fun CameraScreen() {
         }
         // Transparent Compose gesture layer sits above PreviewView (including its internal surface).
         // Camera controls are composed later and remain interactive above this layer.
-        if (permitted && !showSettings && !wheelOpen) {
+        if (permitted && !showSettings) {
             Box(Modifier.fillMaxSize().pointerInput(focusLocked, previewView) {
                 detectTapGestures(
                     onTap = { offset ->
@@ -311,20 +310,8 @@ fun CameraScreen() {
                 })
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
-        if (wheelOpen && !showSettings) {
-            Box(Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = 258.dp)
-                .zIndex(15f)) {
-                RadialModeWheel(
-                    selected = wheelHover,
-                    modifier = Modifier.size(300.dp)
-                )
-            }
-        }
-
-
         // Style 4: floating controls. The chevron expands this surface vertically.
-        if (!wheelOpen && !showSettings) {
+        if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xA8111319), RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
                 .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
@@ -463,7 +450,7 @@ fun CameraScreen() {
             }
         }
         // Dedicated full-screen settings page, not a floating dropdown.
-        AnimatedVisibility(visible = showSettings && !wheelOpen,
+        AnimatedVisibility(visible = showSettings,
             enter = slideInVertically(animationSpec = tween(190), initialOffsetY = { it / 8 }) + fadeIn(tween(160)),
             exit = slideOutVertically(animationSpec = tween(150), targetOffsetY = { it / 8 }) + fadeOut(tween(130)),
             modifier = Modifier.fillMaxSize().zIndex(30f)) {
@@ -549,7 +536,7 @@ fun CameraScreen() {
             }
             }
         }
-        AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !wheelOpen && !showSettings,
+        AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !showSettings,
             modifier = Modifier.align(Alignment.BottomCenter).zIndex(14f).padding(start = 16.dp, end = 16.dp, bottom = 126.dp),
             enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
             exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
