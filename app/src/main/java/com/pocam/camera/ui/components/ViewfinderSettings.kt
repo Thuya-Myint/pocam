@@ -54,7 +54,7 @@ fun ViewfinderSettings(
             .padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).background(Color(0xFF30343D), CircleShape)
                 .clickable(onClick = onClose), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.ArrowBack, "Back to camera", tint = Color.White)
+                Icon(Icons.Rounded.Close, "Back to camera", tint = Color.White)
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -79,12 +79,12 @@ fun ViewfinderSettings(
         }
         when (section) {
             "Capture" -> {
-                SettingsGroup("Capture", Icons.Rounded.CameraAlt, accent) {
-                    SettingsChoice(Icons.Rounded.PhotoSizeSelectLarge, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
-                    SettingsChoice(Icons.Rounded.Image, "Image format", imageFormat) { dialog = "Image format" }
-                    SettingsToggle(Icons.Rounded.HdrOn, "HDR", "Improve highlight and shadow detail", hdr, accent) { hdr = it }
+                SettingsGroup("Capture", Icons.Rounded.PhotoLibrary, accent) {
+                    SettingsChoice(Icons.Rounded.PhotoLibrary, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
+                    SettingsChoice(Icons.Rounded.PhotoLibrary, "Image format", imageFormat) { dialog = "Image format" }
+                    SettingsToggle(Icons.Rounded.Tune, "HDR", "Improve highlight and shadow detail", hdr, accent) { hdr = it }
                     SettingsToggle(Icons.Rounded.GridOn, "Grid lines", "Rule of thirds", grid, accent, onGrid)
-                    SettingsToggle(Icons.Rounded.Straighten, "Level guide", "Keep photos straight", level, accent, onLevel)
+                    SettingsToggle(Icons.Rounded.GridOn, "Level guide", "Keep photos straight", level, accent, onLevel)
                 }
                 SettingsGroup("Capture timer", Icons.Rounded.Timer, accent) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -99,17 +99,17 @@ fun ViewfinderSettings(
                     }
                 }
             }
-            "Camera" -> SettingsGroup("Camera", Icons.Rounded.Settings, accent) {
+            "Camera" -> SettingsGroup("Camera", Icons.Rounded.Tune, accent) {
                 SettingsToggle(Icons.Rounded.FlashOn, "Live torch", "Use camera light", torch, accent, onTorch, torchAvailable)
-                SettingsToggle(Icons.Rounded.VolumeUp, "Shutter sound", "Play sound when taking a photo", shutterSound, accent) { shutterSound = it }
-                SettingsToggle(Icons.Rounded.CenterFocusStrong, "Focus tracking", "Track moving subjects", focusTracking, accent) { focusTracking = it }
-                SettingsChoice(Icons.Rounded.Exposure, "Exposure", "${exposure} steps") { dialog = "Exposure" }
+                SettingsToggle(Icons.Rounded.Tune, "Shutter sound", "Play sound when taking a photo", shutterSound, accent) { shutterSound = it }
+                SettingsToggle(Icons.Rounded.Tune, "Focus tracking", "Track moving subjects", focusTracking, accent) { focusTracking = it }
+                SettingsChoice(Icons.Rounded.Tune, "Exposure", "${exposure} steps") { dialog = "Exposure" }
             }
             "Video" -> SettingsGroup("Video", Icons.Rounded.Videocam, accent) {
-                SettingsChoice(Icons.Rounded.HighQuality, "Video resolution", videoQuality) { dialog = "Video resolution" }
+                SettingsChoice(Icons.Rounded.Videocam, "Video resolution", videoQuality) { dialog = "Video resolution" }
                 SettingsToggle(Icons.Rounded.Videocam, "Video stabilization", "Reduce shake while recording", stabilization, accent) { stabilization = it }
             }
-            else -> SettingsGroup("Appearance", Icons.Rounded.Palette, accent) {
+            else -> SettingsGroup("Appearance", Icons.Rounded.Tune, accent) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("System", "Light", "Dark").forEach { name ->
                         Box(Modifier.weight(1f).background(if (appearance == name) accent else Color(0xFF343740), CircleShape)
@@ -171,7 +171,7 @@ private fun SettingsChoice(icon: ImageVector, title: String, value: String, onCl
             Text(title, color = Color.White, fontWeight = FontWeight.Medium)
             Text(value, color = Color.LightGray, fontSize = 12.sp)
         }
-        Icon(Icons.Rounded.ChevronRight, null, tint = Color.LightGray)
+        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Color.LightGray)
     }
 }
 
