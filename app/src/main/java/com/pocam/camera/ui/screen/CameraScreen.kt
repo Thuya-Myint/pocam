@@ -4,6 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import com.pocam.camera.ui.components.CameraGrid
@@ -437,7 +442,7 @@ fun CameraScreen() {
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 60.dp),
+            .padding(start = 10.dp, end = 10.dp, top = 12.dp, bottom = 60.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp)
@@ -483,9 +488,25 @@ fun CameraScreen() {
             }
             Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
-                    // Draw outside the 88dp shutter footprint without expanding the dock.
-                    // The bottom half naturally disappears past the screen edge.
-                    RadialModeWheel(wheelHover, Modifier.zIndex(1f))
+                    // Keep the mode wheel below the shutter and feather its lower edge.
+                    // It must not cover the gallery and camera-switch actions.
+                    RadialModeWheel(wheelHover, Modifier.zIndex(1f)
+                        .offset(y = 105.dp)
+                        .graphicsLayer {
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.White,
+                                    .34f to Color.White,
+                                    .65f to Color.White.copy(alpha = .55f),
+                                    1f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        })
                 }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
                     onSound = { playUiTone() },
