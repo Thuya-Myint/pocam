@@ -72,6 +72,7 @@ import android.view.MotionEvent
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -228,6 +229,13 @@ fun CameraScreen() {
         }
     }
     DisposableEffect(controller, tones) { onDispose { controller.release(); tones.release() } }
+    BackHandler(enabled = showSettings || showProPanel || showMore) {
+        when {
+            showSettings -> showSettings = false
+            showProPanel -> showProPanel = false
+            showMore -> showMore = false
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val availableHeight = maxHeight
@@ -440,18 +448,19 @@ fun CameraScreen() {
                 }
             }
             Box(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(top = 166.dp).background(Color(0x77303842), CircleShape)
+                // Keep the mode badge directly under the header, matching the reference.
+                .padding(top = 105.dp).background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
         }
-        // Dedicated full-screen settings page, not a floating dropdown.
-        AnimatedVisibility(visible = showSettings,
-            enter = slideInVertically(animationSpec = tween(190), initialOffsetY = { it / 8 }) + fadeIn(tween(160)),
-            exit = slideOutVertically(animationSpec = tween(150), targetOffsetY = { it / 8 }) + fadeOut(tween(130)),
-            modifier = Modifier.fillMaxSize().zIndex(30f)) {
+        // Render settings as a fixed opaque page. Sliding and fading the entire
+        // settings tree over a live camera SurfaceView causes large GPU overdraw
+        // and frame skips on some Android devices. Immediate navigation is cheaper.
+        if (showSettings) {
+            Box(Modifier.fillMaxSize().zIndex(30f)) {
             Column(Modifier.fillMaxSize()
                 .background(PocamPalette.Carbon)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
