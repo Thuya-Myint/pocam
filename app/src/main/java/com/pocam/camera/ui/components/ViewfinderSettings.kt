@@ -1,10 +1,5 @@
 package com.pocam.camera.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,23 +36,23 @@ fun ViewfinderSettings(
 ) {
     var tab by remember { mutableStateOf("Capture") }
     val orange = PocamPalette.Orange
-    Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(17.dp)) {
+    Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth()
-            .background(PocamPalette.GlassLight, RoundedCornerShape(28.dp))
-            .border(1.dp, PocamPalette.Steel.copy(alpha=.38f), RoundedCornerShape(28.dp))
-            .padding(12.dp),
+            .background(PocamPalette.GlassLight, RoundedCornerShape(22.dp))
+            .border(1.dp, PocamPalette.Steel.copy(alpha=.38f), RoundedCornerShape(22.dp))
+            .padding(9.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(46.dp).background(PocamPalette.Graphite, CircleShape)
+            Box(Modifier.size(40.dp).background(PocamPalette.Graphite, CircleShape)
                 .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
                 Icon(Icons.Rounded.Close,contentDescription="Return to camera",tint=Color.White)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Settings",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                Text("Settings",color=Color.White,fontSize=20.sp,fontWeight=FontWeight.Bold)
                 Text("POCAM  ·  CAMERA",color=PocamPalette.Silver,
                     fontSize=10.sp,letterSpacing=1.sp)
             }
-            Box(Modifier.size(46.dp).background(PocamPalette.Graphite,CircleShape),
+            Box(Modifier.size(40.dp).background(PocamPalette.Graphite,CircleShape),
                 contentAlignment=Alignment.Center) {
                 Icon(Icons.Rounded.Tune,contentDescription=null,tint=orange)
             }
@@ -67,7 +62,7 @@ fun ViewfinderSettings(
                 val selected=section==tab
                 Box(Modifier.weight(1f).background(
                     if(selected)orange else PocamPalette.Graphite,CircleShape)
-                    .clickable { tab=section }.padding(vertical=12.dp),
+                    .clickable { tab=section }.padding(vertical=10.dp),
                     contentAlignment=Alignment.Center) {
                     Text(section,fontSize=11.sp,
                         color=if(selected)PocamPalette.Black else Color.White,
@@ -75,11 +70,9 @@ fun ViewfinderSettings(
                 }
             }
         }
-        AnimatedContent(targetState=tab,transitionSpec={
-            fadeIn(tween(145)) togetherWith fadeOut(tween(110))
-        },label="settings-tabs") { selected ->
-            Column(verticalArrangement=Arrangement.spacedBy(17.dp)) {
-                when(selected) {
+        // Do not crossfade and remeasure two complete settings pages.
+        Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            when(tab) {
                     "Capture" -> {
                         SettingsSection("Capture",Icons.Rounded.PhotoLibrary) {
                             SettingsInfo(Icons.Rounded.PhotoLibrary,"Photo resolution",
@@ -89,7 +82,7 @@ fun ViewfinderSettings(
                                 "JPEG  ·  maximum compatibility")
                             SettingsSeparator()
                             SettingsInfo(Icons.Rounded.Tune,"HDR",
-                                "Uses device extensions in supported modes")
+                                "OEM HDR extensions are currently disabled")
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.GridOn,"Grid lines",
                                 "Rule-of-thirds guide",grid,onGrid)
@@ -102,7 +95,7 @@ fun ViewfinderSettings(
                                 horizontalArrangement=Arrangement.SpaceBetween) {
                                 listOf(0,3,5,10).forEach { value ->
                                     val active=timer==value
-                                    Box(Modifier.size(57.dp).background(
+                                    Box(Modifier.size(50.dp).background(
                                         if(active)orange else PocamPalette.Graphite,CircleShape)
                                         .clickable { onTimer(value) },contentAlignment=Alignment.Center) {
                                         Text(if(value==0)"OFF" else "${value}s",
@@ -201,7 +194,7 @@ fun ViewfinderSettings(
                                 "Curved zoom and mode selector  ·  fixed")
                             SettingsSeparator()
                             SettingsInfo(Icons.Rounded.Tune,"UI animations",
-                                "Fast fade and slide transitions")
+                                "Reduced motion for responsive camera controls")
                         }
                         SettingsSection("Advanced tools",Icons.Rounded.Tune) {
                             SettingsInfo(Icons.Rounded.Tune,"RAW DNG / Histogram",
@@ -211,34 +204,33 @@ fun ViewfinderSettings(
                                 "Planned  ·  not yet available")
                         }
                     }
-                }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
     }
 }
 @Composable
 private fun SettingsSection(
     title:String, icon:ImageVector, content:@Composable ColumnScope.()->Unit
 ) {
-    Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
-        Row(Modifier.padding(start=10.dp),verticalAlignment=Alignment.CenterVertically,
+    Column(verticalArrangement=Arrangement.spacedBy(7.dp)) {
+        Row(Modifier.padding(start=8.dp),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            Icon(icon,null,tint=PocamPalette.Orange,modifier=Modifier.size(20.dp))
-            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=15.sp)
+            Icon(icon,null,tint=PocamPalette.Orange,modifier=Modifier.size(18.dp))
+            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
         }
         Column(Modifier.fillMaxWidth().background(
-            PocamPalette.GlassLight,RoundedCornerShape(26.dp))
-            .border(1.dp,PocamPalette.Steel.copy(alpha=.22f),RoundedCornerShape(26.dp))
-            .padding(horizontal=17.dp,vertical=10.dp),content=content)
+            PocamPalette.GlassLight,RoundedCornerShape(22.dp))
+            .border(1.dp,PocamPalette.Steel.copy(alpha=.22f),RoundedCornerShape(22.dp))
+            .padding(horizontal=14.dp,vertical=8.dp),content=content)
     }
 }
 @Composable
 private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),
+    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),
         verticalAlignment=Alignment.CenterVertically) {
-        Icon(icon,null,tint=PocamPalette.Silver,modifier=Modifier.size(23.dp))
-        Spacer(Modifier.width(14.dp))
+        Icon(icon,null,tint=PocamPalette.Silver,modifier=Modifier.size(21.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name,color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
             Text(description,color=PocamPalette.Silver,fontSize=11.sp)
@@ -248,10 +240,10 @@ private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
 @Composable
 private fun SettingsSwitch(icon:ImageVector,name:String,description:String,
     value:Boolean,onChange:(Boolean)->Unit,enabled:Boolean=true) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
         Icon(icon,null,tint=if(enabled)PocamPalette.Silver else PocamPalette.Steel,
-            modifier=Modifier.size(23.dp))
-        Spacer(Modifier.width(14.dp))
+            modifier=Modifier.size(21.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name,color=if(enabled)Color.White else PocamPalette.Steel,
                 fontSize=14.sp,fontWeight=FontWeight.Medium)
