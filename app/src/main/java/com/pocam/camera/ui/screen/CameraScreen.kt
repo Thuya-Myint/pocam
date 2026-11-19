@@ -658,9 +658,7 @@ fun CameraScreen() {
                         tint = if (lastPhoto == null) Color.LightGray else Color.White)
                 }
             }
-            // Fixed shutter position: wheel and shutter always share one center.
-            // Align the wheel's bottom edge with the user's marked guide (~34dp below prior position).
-            // Do not animate or move the shutter on long press.
+            // Keep shutter fixed and separate from the curved, tappable mode selector.
             Box(Modifier.size(88.dp),
                 contentAlignment = Alignment.Center) {
 
@@ -672,8 +670,8 @@ fun CameraScreen() {
                         if (mode == CameraMode.VIDEO) {
                             controller.toggleVideo(
                                 onSaved = { uri -> rememberMedia(uri) },
-                                onError = { error = it },
-                                onState = { recordingVideo = it })
+                                onError = { error = it; shutterPressed = false },
+                                onState = { recordingVideo = it; shutterPressed = false })
                         } else if (mode != CameraMode.MORE) {
                             captureBusy = true
                             countdownJob = scope.launch {
@@ -703,11 +701,12 @@ fun CameraScreen() {
                                 })
                             }
                         } else {
+                            shutterPressed = false
                             Toast.makeText(context, "${mode.name} coming soon",
                                 Toast.LENGTH_SHORT).show()
                         }
-                    },
-                    })
+                    }
+                )
                 if (captureBusy) {
                     Text(if (countdown != null) "TIMER" else "SAVING",
                         color = accent, fontSize = 9.sp,
