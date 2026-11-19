@@ -100,7 +100,7 @@ fun ZoomRail(
             color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.background(Color(0xD91B1F28), RoundedCornerShape(20.dp))
                 .padding(horizontal = 18.dp, vertical = 5.dp))
-        Box(Modifier.width(300.dp).height(108.dp)
+        Box(Modifier.width(230.dp).height(82.dp)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -126,8 +126,8 @@ fun ZoomRail(
             }, contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val cx = size.width / 2f
-                val radius = size.width * .62f
-                val cy = size.height + radius * .58f
+                val radius = size.width * .48f
+                val cy = size.height + radius * .27f
                 for (i in 0..48) {
                     val theta = Math.toRadians((198f + 144f * i / 48f).toDouble())
                     val major = i % 8 == 0
