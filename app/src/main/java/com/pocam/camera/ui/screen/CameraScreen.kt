@@ -326,8 +326,8 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(Color(0xEB111319))
-                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 44.dp, bottom = 24.dp),
+                .background(Color(0xA8111319), RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
+                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
@@ -339,6 +339,8 @@ fun CameraScreen() {
                             contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
                             tint = Color.White)
                     }
+                    Text("pocam.", color = Color.White, fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
                             contentAlignment = Alignment.Center) {
@@ -607,7 +609,7 @@ fun CameraScreen() {
                         path.lineTo(x, y)
                     }
                     path.close()
-                    drawPath(path, Color(0xA81E1E26))
+                    drawPath(path, Color(0x961E1E26))
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
