@@ -107,6 +107,7 @@ import com.pocam.camera.domain.model.CameraMode
 import com.pocam.camera.ui.components.RadialModeWheel
 import com.pocam.camera.ui.components.ShutterButton
 import com.pocam.camera.ui.components.ManualControls
+import com.pocam.camera.ui.components.PhotoEditor
 
 @Composable
 fun CameraScreen() {
@@ -175,6 +176,7 @@ fun CameraScreen() {
             .putString("last_media_uri", uri.toString()).apply()
     }
     var error by remember { mutableStateOf<String?>(null) }
+    var editPhoto by remember { mutableStateOf<Uri?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permitted = it
         if (!it) error = "Camera permission required"
@@ -442,12 +444,14 @@ fun CameraScreen() {
                 .background(Color(0xCC323640), CircleShape)
                 .clickable(enabled = lastPhoto != null) {
                     lastPhoto?.let { uri ->
-                        try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, if (uri.toString().contains("video")) "video/mp4" else "image/jpeg")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            })
-                        } catch (_: Exception) { error = "No photo viewer available" }
+                        if (uri.toString().contains("/video/")) {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "video/mp4")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                })
+                            } catch (_: Exception) { error = "No video viewer available" }
+                        } else editPhoto = uri
                     }
                 }, contentAlignment = Alignment.Center) {
                 val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
@@ -600,6 +604,13 @@ fun CameraScreen() {
                         fontWeight = FontWeight.Bold)
                 }
             }
+        }
+        editPhoto?.let { uri ->
+            PhotoEditor(uri = uri, onClose = { editPhoto = null }, onSaved = {
+                rememberMedia(it)
+                editPhoto = null
+                Toast.makeText(context, "Edited photo saved", Toast.LENGTH_SHORT).show()
+            }, onError = { error = it })
         }
         error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
