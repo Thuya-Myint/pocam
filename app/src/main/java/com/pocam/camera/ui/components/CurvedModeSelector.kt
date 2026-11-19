@@ -70,7 +70,7 @@ fun CurvedModeSelector(
     Canvas(modifier.fillMaxWidth().height(116.dp)
         .pointerInput(Unit) {
             detectTapGestures { offset ->
-                val index = ((offset.x / size.width.coerceAtLeast(1f)) * modes.size)
+                val index = ((offset.x / size.width.toFloat().coerceAtLeast(1f)) * modes.size)
                     .toInt().coerceIn(0, modes.lastIndex)
                 if (modes[index] != selected) {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
