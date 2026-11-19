@@ -61,6 +61,8 @@ import android.net.Uri
 import android.content.pm.PackageManager
 import android.widget.Toast
 import android.view.MotionEvent
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -235,75 +237,50 @@ fun CameraScreen() {
                     })
 
                 }
-            }, update = { view ->
-                view.setOnTouchListener(object : android.view.View.OnTouchListener {
-                    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-                    private var longPressed = false
-                    private var downX = 0f
-                    private var downY = 0f
-                    private var pending: Runnable? = null
-                    override fun onTouch(v: android.view.View, event: MotionEvent): Boolean {
-                        when (event.actionMasked) {
-                            MotionEvent.ACTION_DOWN -> {
-                                longPressed = false
-                                downX = event.x
-                                downY = event.y
-                                pending = Runnable {
-                                    longPressed = true
-                                    if (!focusLocked) {
-                                        controller.lockFocusAt(view, downX, downY)
-                                        focusLocked = controller.isFocusLocked()
-                                        if (focusLocked) {
-                                            focusPoint = Pair(downX / view.width.coerceAtLeast(1),
-                                                downY / view.height.coerceAtLeast(1))
-                                            focusLockPoint = focusPoint
-                                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                        }
-                                    }
-                                }.also { handler.postDelayed(it, 500L) }
-                                return true
-                            }
-                            MotionEvent.ACTION_MOVE -> {
-                                val slop = android.view.ViewConfiguration.get(v.context).scaledTouchSlop
-                                if (kotlin.math.abs(event.x - downX) > slop ||
-                                    kotlin.math.abs(event.y - downY) > slop) {
-                                    pending?.let(handler::removeCallbacks)
+            }, modifier = Modifier.fillMaxSize())
+        }
+        // Transparent Compose gesture layer sits above PreviewView (including its internal surface).
+        // Camera controls are composed later and remain interactive above this layer.
+        if (permitted && !showSettings && !wheelOpen) {
+            Box(Modifier.fillMaxSize().pointerInput(focusLocked, previewView) {
+                detectTapGestures(
+                    onTap = { offset ->
+                        val view = previewView
+                        if (view != null) {
+                            if (focusLocked) {
+                                val point = focusLockPoint
+                                if (point != null &&
+                                    kotlin.math.abs(offset.x - point.first * size.width) < 80f &&
+                                    kotlin.math.abs(offset.y - point.second * size.height) < 80f) {
+                                    controller.unlockFocus()
+                                    focusLocked = false
+                                    focusLockPoint = null
+                                    focusPoint = null
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 }
-                                return true
-                            }
-                            MotionEvent.ACTION_UP -> {
-                                pending?.let(handler::removeCallbacks)
-                                if (!longPressed) {
-                                    if (!focusLocked) {
-                                        controller.focusAt(view, event.x, event.y)
-                                        focusPoint = Pair(event.x / view.width.coerceAtLeast(1),
-                                            event.y / view.height.coerceAtLeast(1))
-                                        focusSequence++
-                                    } else {
-                                        val point = focusLockPoint
-                                        if (point != null &&
-                                            kotlin.math.abs(event.x - point.first * view.width) < 60f &&
-                                            kotlin.math.abs(event.y - point.second * view.height) < 60f) {
-                                            controller.unlockFocus()
-                                            focusLocked = false
-                                            focusLockPoint = null
-                                            focusPoint = null
-                                            v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        }
-                                    }
-                                    v.performClick()
-                                }
-                                return true
-                            }
-                            MotionEvent.ACTION_CANCEL -> {
-                                pending?.let(handler::removeCallbacks)
-                                return true
+                            } else {
+                                controller.focusAt(view, offset.x, offset.y)
+                                focusPoint = Pair(offset.x / size.width.coerceAtLeast(1),
+                                    offset.y / size.height.coerceAtLeast(1))
+                                focusSequence++
                             }
                         }
-                        return true
+                    },
+                    onLongPress = { offset ->
+                        val view = previewView
+                        if (view != null && !focusLocked) {
+                            controller.lockFocusAt(view, offset.x, offset.y)
+                            focusLocked = controller.isFocusLocked()
+                            if (focusLocked) {
+                                focusPoint = Pair(offset.x / size.width.coerceAtLeast(1),
+                                    offset.y / size.height.coerceAtLeast(1))
+                                focusLockPoint = focusPoint
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            }
+                        }
                     }
-                })
-            }, modifier = Modifier.fillMaxSize())
+                )
+            })
         }
         if (crosshairEnabled) {
             Box(Modifier.align(Alignment.Center).size(20.dp),
@@ -392,6 +369,8 @@ fun CameraScreen() {
                             previewView?.let { view ->
                                 if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
                                 focusLocked = controller.isFocusLocked()
+                                focusLockPoint = if (focusLocked) Pair(.5f, .5f) else null
+                                focusPoint = focusLockPoint
                             }
                         }, verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(44.dp).background(Color(0xFF30333B), CircleShape), contentAlignment = Alignment.Center) {
@@ -451,7 +430,7 @@ fun CameraScreen() {
                 }
             }
             Box(Modifier.align(Alignment.TopCenter).statusBarsPadding()
-                .padding(top = 106.dp).background(Color(0x77303842), CircleShape)
+                .padding(top = 166.dp).background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
