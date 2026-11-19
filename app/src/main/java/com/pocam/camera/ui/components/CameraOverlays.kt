@@ -87,119 +87,75 @@ fun ZoomRail(
 ) {
     val accent = cameraAccent()
     val haptics = LocalHapticFeedback.current
-    val safeMax = maxZoom.coerceAtLeast(1.01f)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestTick by rememberUpdatedState(onTick)
-    val latestHaptics by rememberUpdatedState(haptics)
-    val latestMax by rememberUpdatedState(safeMax)
-    var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    val latestMax by rememberUpdatedState(maxZoom.coerceAtLeast(1f))
+    var lastStep by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     var lastWhole by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
-    val fraction = ((selected - 1f) / (safeMax - 1f)).coerceIn(0f, 1f)
-    val animated by animateFloatAsState(
-        fraction,
-        androidx.compose.animation.core.spring(
-            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-            stiffness = 320f
-        ),
-        label = "zoom dial"
-    )
-
-    // Transparent zoom ruler: fixed accent pointer, no dark label pill or dot.
-    // The scale is shortened to 80% of its previous visual width.
-    Box(modifier.fillMaxWidth().height(116.dp), contentAlignment = Alignment.TopCenter) {
-        Canvas(
-            Modifier.fillMaxWidth(.64f).height(100.dp)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        fun update(x: Float) {
-                            val edge = 18.dp.toPx()
-                            val normalized = ((x - edge) /
-                                (size.width - edge * 2f).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                            val rawZoom = 1f + normalized * (latestMax - 1f)
-                            val nearest = kotlin.math.round(rawZoom).toInt()
-                            // A small magnetic detent at whole-number zoom levels.
-                            // Decimals remain selectable once the finger moves past the detent.
-                            val nearWhole = nearest >= 1 && nearest <= latestMax &&
-                                kotlin.math.abs(rawZoom - nearest) <= .055f
-                            val next = if (nearWhole) nearest.toFloat() else rawZoom
-                            val tick = (normalized * 100f).toInt()
-                            if (nearWhole && nearest != lastWhole) {
-                                latestHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                lastWhole = nearest
-                            } else if (!nearWhole && tick != lastTick && tick % 4 == 0) {
-                                latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            }
-                            if (tick != lastTick) {
-                                lastTick = tick
-                                if (tick % 4 == 0 || nearWhole) latestTick()
-                            }
-                            latestSelect(next)
-                        }
-                        update(down.position.x)
-                        do {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change != null && change.pressed) {
-                                update(change.position.x)
-                                change.consume()
-                            }
-                        } while (event.changes.any { it.id == down.id && it.pressed })
-                    }
-                }
-        ) {
-            val cx = size.width / 2f
-            val radius = size.width * .49f
-            val cy = radius + 9.dp.toPx()
-            // Draw white tick marks on the arc, fading gradually at either edge.
-            for (i in 0..100) {
-                val angle = Math.toRadians((198f + 144f * i / 100f).toDouble())
-                val edge = (kotlin.math.min(i, 100 - i) / 17f).coerceIn(0f, 1f)
-                val fade = (.07f + .93f * edge * edge * (3f - 2f * edge))
-                val major = i % 10 == 0
-                val distance = kotlin.math.abs(i / 100f - animated)
-                // Only the nearest five rods grow smoothly around the current zoom.
-                val proximity = (1f - distance * 100f / 3f).coerceIn(0f, 1f)
-                val length = (if (major) 21f else 12f) + 9f * proximity
-                val rOuter = radius
-                val rInner = radius - length.dp.toPx()
-                val cosine = kotlin.math.cos(angle).toFloat()
-                val sine = kotlin.math.sin(angle).toFloat()
-                val tint = if (proximity > .01f) {
-                    accent.copy(alpha = (.15f + .25f * proximity) * fade)
-                } else Color.White.copy(alpha = .65f * fade)
-                drawLine(
-                    tint,
-                    Offset(cx + rInner * cosine, cy + rInner * sine),
-                    Offset(cx + rOuter * cosine, cy + rOuter * sine),
-                    (if (major) 1.9f else 1.1f).dp.toPx() + 1.1.dp.toPx() * proximity,
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-            }
-            // Fixed center pointer, independent of the scrolling zoom position.
-            val pointerY = cy - radius
-            val triangle = androidx.compose.ui.graphics.Path().apply {
-                moveTo(cx - 6.dp.toPx(), pointerY - 10.dp.toPx())
-                lineTo(cx + 6.dp.toPx(), pointerY - 10.dp.toPx())
-                lineTo(cx, pointerY - 2.dp.toPx())
-                close()
-            }
-            drawPath(triangle, accent)
-            drawLine(
-                accent,
-                Offset(cx, pointerY + 1.dp.toPx()),
-                Offset(cx, pointerY + 20.dp.toPx()),
-                2.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
+    val minZoom = 1f
+    val max = maxZoom.coerceAtLeast(minZoom + .01f)
+    val fraction = ((selected - minZoom) / (max - minZoom)).coerceIn(0f, 1f)
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.background(Color(0xE833293D), CircleShape)
+            .padding(horizontal = 14.dp, vertical = 4.dp)) {
+            Text(String.format(java.util.Locale.US, "%.1f×", selected),
+                color = accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
-        Text(
-            String.format(java.util.Locale.US, "%.1f×", selected),
-            color = accent,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 53.dp)
-        )
+        Canvas(Modifier.fillMaxWidth().height(44.dp)
+            .background(Color(0xD91B1B23), CircleShape)
+            .pointerInput(maxZoom) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    fun update(x: Float) {
+                        val pad = 46.dp.toPx()
+                        val f = ((x - pad) / (size.width - 2f * pad).coerceAtLeast(1f))
+                            .coerceIn(0f, 1f)
+                        val raw = 1f + f * (latestMax - 1f)
+                        val whole = kotlin.math.round(raw).toInt()
+                        val snap = kotlin.math.abs(raw - whole) <= .055f
+                        val next = if (snap) whole.toFloat() else raw
+                        val step = (f * 70).toInt()
+                        if (snap && whole != lastWhole) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            lastWhole = whole
+                            latestTick()
+                        } else if (step != lastStep && step % 4 == 0) {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            latestTick()
+                        }
+                        lastStep = step
+                        latestSelect(next.coerceIn(1f, latestMax))
+                    }
+                    update(down.position.x)
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change != null && change.pressed) {
+                            update(change.position.x)
+                            change.consume()
+                        }
+                    } while (event.changes.any { it.id == down.id && it.pressed })
+                }
+            }) {
+            val pad = 46.dp.toPx()
+            val usable = (size.width - pad * 2f).coerceAtLeast(1f)
+            val cy = size.height / 2f
+            for (i in 0..70) {
+                val f = i / 70f
+                val x = pad + usable * f
+                val major = i % 10 == 0
+                val nearby = (1f - kotlin.math.abs(f - fraction) * 15f).coerceIn(0f, 1f)
+                val h = (if (major) 18f else 9f) + nearby * 7f
+                drawLine(if (f <= fraction) accent.copy(alpha = .55f + nearby * .4f)
+                    else Color.White.copy(alpha = .6f),
+                    Offset(x, cy - h.dp.toPx() / 2f),
+                    Offset(x, cy + h.dp.toPx() / 2f),
+                    (if (major) 1.8f else 1.1f).dp.toPx())
+            }
+            val x = pad + usable * fraction
+            drawCircle(accent, radius = 9.dp.toPx(), center = Offset(x, cy))
+            drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(x, cy))
+        }
     }
 }
 
