@@ -112,7 +112,10 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                             expanded = false
                             pressing = false
                             onWheelChange(false)
-                            if (hovered != mode) onModeSelected(hovered)
+                            if (hovered != mode) {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onModeSelected(hovered)
+                            }
                         }
                         } finally {
                             pressing = false

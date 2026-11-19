@@ -93,6 +93,7 @@ fun ZoomRail(
     val latestHaptics by rememberUpdatedState(haptics)
     val latestMax by rememberUpdatedState(safeMax)
     var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    var lastWhole by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val fraction = ((selected - 1f) / (safeMax - 1f)).coerceIn(0f, 1f)
     val animated by animateFloatAsState(
         fraction,
@@ -107,7 +108,7 @@ fun ZoomRail(
     // The scale is shortened to 80% of its previous visual width.
     Box(modifier.fillMaxWidth().height(116.dp), contentAlignment = Alignment.TopCenter) {
         Canvas(
-            Modifier.fillMaxWidth(.8f).height(100.dp)
+            Modifier.fillMaxWidth(.64f).height(100.dp)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
@@ -115,14 +116,25 @@ fun ZoomRail(
                             val edge = 18.dp.toPx()
                             val normalized = ((x - edge) /
                                 (size.width - edge * 2f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                            val rawZoom = 1f + normalized * (latestMax - 1f)
+                            val nearest = kotlin.math.round(rawZoom).toInt()
+                            // A small magnetic detent at whole-number zoom levels.
+                            // Decimals remain selectable once the finger moves past the detent.
+                            val nearWhole = nearest >= 1 && nearest <= latestMax &&
+                                kotlin.math.abs(rawZoom - nearest) <= .055f
+                            val next = if (nearWhole) nearest.toFloat() else rawZoom
                             val tick = (normalized * 100f).toInt()
+                            if (nearWhole && nearest != lastWhole) {
+                                latestHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                lastWhole = nearest
+                            } else if (!nearWhole && tick != lastTick && tick % 4 == 0) {
+                                latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
                             if (tick != lastTick) {
                                 lastTick = tick
-                                latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                latestTick()
+                                if (tick % 4 == 0 || nearWhole) latestTick()
                             }
-                            latestSelect(if (normalized < .012f) 1f
-                                else 1f + normalized * (latestMax - 1f))
+                            latestSelect(next)
                         }
                         update(down.position.x)
                         do {
@@ -154,7 +166,7 @@ fun ZoomRail(
                 val cosine = kotlin.math.cos(angle).toFloat()
                 val sine = kotlin.math.sin(angle).toFloat()
                 val tint = if (proximity > .01f) {
-                    Color.White.copy(alpha = (.58f + .42f * proximity) * fade)
+                    accent.copy(alpha = (.15f + .25f * proximity) * fade)
                 } else Color.White.copy(alpha = .65f * fade)
                 drawLine(
                     tint,
