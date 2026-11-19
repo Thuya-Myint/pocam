@@ -485,17 +485,10 @@ fun CameraScreen() {
                         tint = if (lastPhoto == null) Color.LightGray else Color.White)
                 }
             }
-            // Lift the shutter AND the wheel together during long press.
-            // They must share the same center; the wheel is not independently offset.
-            val wheelDockOffset by androidx.compose.animation.core.animateDpAsState(
-                targetValue = if (wheelOpen) (-86).dp else 0.dp,
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                    stiffness = 320f
-                ),
-                label = "wheel dock lift"
-            )
-            Box(Modifier.size(88.dp).offset(y = wheelDockOffset),
+            // Fixed shutter position: wheel and shutter always share one center.
+            // Keep 40dp clearance below the 300dp wheel when it is shown.
+            // Do not animate or move the shutter on long press.
+            Box(Modifier.size(88.dp).offset(y = (-86).dp),
                 contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
