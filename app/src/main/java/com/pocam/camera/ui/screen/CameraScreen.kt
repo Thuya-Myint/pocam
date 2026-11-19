@@ -175,6 +175,10 @@ fun CameraScreen() {
     var countdownJob by remember { mutableStateOf<Job?>(null) }
     var timerSeconds by remember { mutableStateOf(preferences.getInt("timer", 0)) }
     var videoQuality by remember { mutableStateOf(preferences.getString("video_quality", "1080p") ?: "1080p") }
+    var shutterSound by remember { mutableStateOf(preferences.getBoolean("shutter_sound", true)) }
+    var videoStabilization by remember { mutableStateOf(preferences.getBoolean("video_stabilization", true)) }
+    var headerOpacity by remember { mutableFloatStateOf(preferences.getFloat("header_opacity", .85f)) }
+    LaunchedEffect(videoStabilization) { controller.setVideoStabilizationEnabled(videoStabilization) }
     LaunchedEffect(videoQuality) {
         controller.setVideoQuality(when (videoQuality) {
             "4K" -> Quality.UHD
@@ -317,7 +321,7 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(Color(0xD10C0F15), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                .background(PocamPalette.Black.copy(alpha=headerOpacity), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -476,6 +480,25 @@ fun CameraScreen() {
                 onTorch = { torchEnabled = it; controller.setTorch(it) },
                 timer = timerSeconds,
                 videoQuality = videoQuality,
+                shutterSound = shutterSound,
+                onShutterSound = { value -> shutterSound = value
+                    preferences.edit().putBoolean("shutter_sound", value).apply() },
+                videoStabilization = videoStabilization,
+                onVideoStabilization = { value ->
+                    videoStabilization = value
+                    controller.setVideoStabilizationEnabled(value)
+                    preferences.edit().putBoolean("video_stabilization",value).apply()
+                    if (!recordingVideo && mode == CameraMode.VIDEO) {
+                        previewView?.let { view ->
+                            controller.bind(owner,view,{error=it},{cameraGeneration++},mode)
+                        }
+                    }
+                },
+                headerOpacity = headerOpacity,
+                onHeaderOpacity = { value ->
+                    headerOpacity = value
+                    preferences.edit().putFloat("header_opacity",value).apply()
+                },
                 exposure = exposureIndex,
                 exposureRange = exposureRange,
                 onExposure = { exposureIndex = it; controller.setExposure(it) },
@@ -659,7 +682,7 @@ fun CameraScreen() {
                 contentAlignment = Alignment.Center) {
 
                 ShutterButton(busy = captureBusy, recording = recordingVideo,
-                    onSound = { playUiTone() },
+                    onSound = { if (shutterSound) playUiTone() },
                     onCapture = {
                         if (captureBusy) return@ShutterButton
                         shutterPressed = true

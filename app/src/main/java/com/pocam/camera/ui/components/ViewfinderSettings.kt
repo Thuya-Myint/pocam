@@ -1,17 +1,16 @@
 package com.pocam.camera.ui.components
 
-import android.os.Build
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -20,13 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
+import kotlin.math.roundToInt
 
-private val surface = Color(0xC622252D)
-
+/** Pocam v0.5 — real camera settings in a unified graphite/steel/orange UI. */
 @Composable
 fun ViewfinderSettings(
     grid: Boolean, onGrid: (Boolean) -> Unit,
@@ -34,169 +33,244 @@ fun ViewfinderSettings(
     torch: Boolean, torchAvailable: Boolean, onTorch: (Boolean) -> Unit,
     timer: Int, onTimer: (Int) -> Unit,
     videoQuality: String, onVideoQuality: (String) -> Unit,
+    videoStabilization: Boolean, onVideoStabilization: (Boolean) -> Unit,
+    shutterSound: Boolean, onShutterSound: (Boolean) -> Unit,
+    headerOpacity: Float, onHeaderOpacity: (Float) -> Unit,
     exposure: Int, exposureRange: IntRange, onExposure: (Int) -> Unit,
     onClose: () -> Unit, modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val accent = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
-        else Color(0xFF89B9FF)
-    }
-    var section by remember { mutableStateOf("Capture") }
-    var photoResolution by remember { mutableStateOf("Maximum available") }
-    var imageFormat by remember { mutableStateOf("JPEG") }
-    var hdr by remember { mutableStateOf(false) }
-    var shutterSound by remember { mutableStateOf(true) }
-    var focusTracking by remember { mutableStateOf(false) }
-    var stabilization by remember { mutableStateOf(true) }
-    var appearance by remember { mutableStateOf("System") }
-    var dialog by remember { mutableStateOf<String?>(null) }
-
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth().background(surface, RoundedCornerShape(30.dp))
-            .padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).background(Color(0xFF30343D), CircleShape)
-                .clickable(onClick = onClose), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Close, "Back to camera", tint = Color.White)
+    var tab by remember { mutableStateOf("Capture") }
+    val orange = PocamPalette.Orange
+    Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(17.dp)) {
+        Row(Modifier.fillMaxWidth()
+            .background(PocamPalette.GlassLight, RoundedCornerShape(28.dp))
+            .border(1.dp, PocamPalette.Steel.copy(alpha=.38f), RoundedCornerShape(28.dp))
+            .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(46.dp).background(PocamPalette.Graphite, CircleShape)
+                .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
+                Icon(Icons.Rounded.Close,contentDescription="Return to camera",tint=Color.White)
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("Settings", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("Pocam Camera", color = Color.LightGray, fontSize = 13.sp)
+                Text("Settings",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
+                Text("POCAM  ·  CAMERA",color=PocamPalette.Silver,
+                    fontSize=10.sp,letterSpacing=1.sp)
             }
-            Box(Modifier.size(48.dp).background(Color(0xFF30343D), CircleShape),
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Tune, null, tint = accent)
+            Box(Modifier.size(46.dp).background(PocamPalette.Graphite,CircleShape),
+                contentAlignment=Alignment.Center) {
+                Icon(Icons.Rounded.Tune,contentDescription=null,tint=orange)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Capture", "Camera", "Video", "Appearance").forEach { name ->
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            listOf("Capture","Camera","Video","Appearance").forEach { section ->
+                val selected=section==tab
                 Box(Modifier.weight(1f).background(
-                    if (section == name) accent else surface, CircleShape)
-                    .clickable { section = name }.padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center) {
-                    Text(name, color = if (section == name) Color.Black else Color.White,
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    if(selected)orange else PocamPalette.Graphite,CircleShape)
+                    .clickable { tab=section }.padding(vertical=12.dp),
+                    contentAlignment=Alignment.Center) {
+                    Text(section,fontSize=11.sp,
+                        color=if(selected)PocamPalette.Black else Color.White,
+                        fontWeight=FontWeight.SemiBold)
                 }
             }
         }
-        AnimatedContent(targetState = section, transitionSpec = {
-            androidx.compose.animation.fadeIn(tween(160)) togetherWith androidx.compose.animation.fadeOut(tween(110))
-        }, label = "settings-section") { section ->
-        when (section) {
-            "Capture" -> {
-                // AnimatedContent lays out a single content root. Stack the capture
-                // section and timer vertically instead of overlaying them.
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                SettingsGroup("Capture", Icons.Rounded.PhotoLibrary, accent) {
-                    SettingsChoice(Icons.Rounded.PhotoLibrary, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
-                    SettingsChoice(Icons.Rounded.PhotoLibrary, "Image format", imageFormat) { dialog = "Image format" }
-                    SettingsToggle(Icons.Rounded.Tune, "HDR", "Improve highlight and shadow detail", hdr, accent, onCheckedChange = { hdr = it })
-                    SettingsToggle(Icons.Rounded.GridOn, "Grid lines", "Rule of thirds", grid, accent, onGrid)
-                    SettingsToggle(Icons.Rounded.GridOn, "Level guide", "Keep photos straight", level, accent, onLevel)
-                }
-                SettingsGroup("Capture timer", Icons.Rounded.Timer, accent) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        listOf(0, 3, 5, 10).forEach { seconds ->
-                            val selected = timer == seconds
-                            Box(Modifier.size(58.dp).background(if (selected) accent else Color(0xFF383C46), CircleShape)
-                                .clickable { onTimer(seconds) }, contentAlignment = Alignment.Center) {
-                                Text(if (seconds == 0) "OFF" else "${seconds}s",
-                                    color = if (selected) Color.Black else Color.White, fontSize = 12.sp)
+        AnimatedContent(targetState=tab,transitionSpec={
+            fadeIn(tween(145)) togetherWith fadeOut(tween(110))
+        },label="settings-tabs") { selected ->
+            Column(verticalArrangement=Arrangement.spacedBy(17.dp)) {
+                when(selected) {
+                    "Capture" -> {
+                        SettingsSection("Capture",Icons.Rounded.PhotoLibrary) {
+                            SettingsInfo(Icons.Rounded.PhotoLibrary,"Photo resolution",
+                                "Highest stable quality available on device")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Image,"Image format",
+                                "JPEG  ·  maximum compatibility")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"HDR",
+                                "Uses device extensions in supported modes")
+                            SettingsSeparator()
+                            SettingsSwitch(Icons.Rounded.GridOn,"Grid lines",
+                                "Rule-of-thirds guide",grid,onGrid)
+                            SettingsSeparator()
+                            SettingsSwitch(Icons.Rounded.CenterFocusStrong,"Center guide",
+                                "Composition crosshair",level,onLevel)
+                        }
+                        SettingsSection("Capture timer",Icons.Rounded.Timer) {
+                            Row(Modifier.fillMaxWidth().padding(vertical=6.dp),
+                                horizontalArrangement=Arrangement.SpaceBetween) {
+                                listOf(0,3,5,10).forEach { value ->
+                                    val active=timer==value
+                                    Box(Modifier.size(57.dp).background(
+                                        if(active)orange else PocamPalette.Graphite,CircleShape)
+                                        .clickable { onTimer(value) },contentAlignment=Alignment.Center) {
+                                        Text(if(value==0)"OFF" else "${value}s",
+                                            fontSize=12.sp,fontWeight=FontWeight.Bold,
+                                            color=if(active)PocamPalette.Black else Color.White)
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                }
-            }
-            "Camera" -> SettingsGroup("Camera", Icons.Rounded.Tune, accent) {
-                SettingsToggle(Icons.Rounded.FlashOn, "Live torch", "Use camera light", torch, accent, onTorch, torchAvailable)
-                SettingsToggle(Icons.Rounded.Tune, "Shutter sound", "Play sound when taking a photo", shutterSound, accent, onCheckedChange = { shutterSound = it })
-                SettingsToggle(Icons.Rounded.Tune, "Focus tracking", "Track moving subjects", focusTracking, accent, onCheckedChange = { focusTracking = it })
-                SettingsChoice(Icons.Rounded.Tune, "Exposure", "${exposure} steps") { dialog = "Exposure" }
-            }
-            "Video" -> SettingsGroup("Video", Icons.Rounded.Videocam, accent) {
-                SettingsChoice(Icons.Rounded.Videocam, "Video resolution", videoQuality) { dialog = "Video resolution" }
-                SettingsToggle(Icons.Rounded.Videocam, "Video stabilization", "Reduce shake while recording", stabilization, accent, onCheckedChange = { stabilization = it })
-            }
-            else -> SettingsGroup("Appearance", Icons.Rounded.Tune, accent) {
-                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("System", "Light", "Dark").forEach { name ->
-                        Box(Modifier.weight(1f).background(if (appearance == name) accent else Color(0xFF343740), CircleShape)
-                            .clickable { appearance = name }.padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center) {
-                            Text(name, color = if (appearance == name) Color.Black else Color.White)
+                    "Camera" -> {
+                        SettingsSection("Camera",Icons.Rounded.Tune) {
+                            SettingsSwitch(Icons.Rounded.FlashOn,"Live torch",
+                                if(torchAvailable)"Illuminate the preview" else "Flash not available on this camera",
+                                torch,onTorch,enabled=torchAvailable)
+                            SettingsSeparator()
+                            SettingsSwitch(Icons.Rounded.VolumeUp,"Shutter sound",
+                                "Play a capture confirmation tone",shutterSound,onShutterSound)
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.CenterFocusStrong,"Touch focus",
+                                "Tap preview to focus · hold to lock")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"Focus tracking",
+                                "Not available in this build")
+                        }
+                        SettingsSection("Exposure compensation",Icons.Rounded.Tune) {
+                            if(exposureRange.first>=exposureRange.last) {
+                                Text("Unavailable on this camera",color=PocamPalette.Silver,fontSize=13.sp)
+                            } else {
+                                Text("EV steps: $exposure",color=Color.White,fontSize=13.sp)
+                                StraightRuler(exposure.toFloat(),
+                                    exposureRange.first.toFloat()..exposureRange.last.toFloat(),
+                                    { v -> onExposure(v.roundToInt().coerceIn(exposureRange)) },
+                                    "$exposure")
+                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+                                    SettingsChip("RESET",exposure==0) { onExposure(0.coerceIn(exposureRange)) }
+                                }
+                            }
+                        }
+                    }
+                    "Video" -> {
+                        SettingsSection("Video",Icons.Rounded.Videocam) {
+                            SettingsInfo(Icons.Rounded.Videocam,"Video resolution",
+                                "Selected: $videoQuality  ·  device may use supported fallback")
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                listOf("720p","1080p","4K").forEach { quality ->
+                                    Box(Modifier.weight(1f).background(
+                                        if(quality==videoQuality)orange else PocamPalette.Graphite,CircleShape)
+                                        .clickable { onVideoQuality(quality) }
+                                        .padding(vertical=11.dp),contentAlignment=Alignment.Center) {
+                                        Text(quality,color=if(quality==videoQuality)PocamPalette.Black
+                                            else Color.White,fontWeight=FontWeight.Bold,fontSize=12.sp)
+                                    }
+                                }
+                            }
+                            SettingsSeparator()
+                            SettingsSwitch(Icons.Rounded.Videocam,"Video stabilization",
+                                "Request smoother video where supported",
+                                videoStabilization,onVideoStabilization)
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"Frame rate",
+                                "Automatic  ·  selected by camera hardware")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"Video codec",
+                                "Managed by Android's recorder")
+                        }
+                    }
+                    else -> {
+                        SettingsSection("Studio appearance",Icons.Rounded.Tune) {
+                            Row(verticalAlignment=Alignment.CenterVertically,
+                                horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                                listOf(
+                                    PocamPalette.Black,PocamPalette.Graphite,
+                                    PocamPalette.Silver,PocamPalette.Orange
+                                ).forEach { swatch ->
+                                    Box(Modifier.size(36.dp).background(swatch,CircleShape)
+                                        .border(1.dp,PocamPalette.Steel,CircleShape))
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text("Fixed studio palette  ·  Orange / Black / Gray / Silver",
+                                fontSize=12.sp,color=PocamPalette.Silver)
+                            SettingsSeparator()
+                            Text("Camera header opacity",color=Color.White,fontWeight=FontWeight.Medium)
+                            Slider(value=headerOpacity,onValueChange=onHeaderOpacity,
+                                valueRange=.45f..1f,colors=SliderDefaults.colors(
+                                    thumbColor=orange,activeTrackColor=orange,
+                                    inactiveTrackColor=PocamPalette.Steel))
+                            Text("${(headerOpacity*100).roundToInt()}%  ·  adjusts the preview header",
+                                fontSize=12.sp,color=PocamPalette.Silver)
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.GridOn,"Control layout",
+                                "Curved zoom and mode selector  ·  fixed")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"UI animations",
+                                "Fast fade and slide transitions")
+                        }
+                        SettingsSection("Advanced tools",Icons.Rounded.Tune) {
+                            SettingsInfo(Icons.Rounded.Tune,"RAW DNG / Histogram",
+                                "Planned  ·  not yet available")
+                            SettingsSeparator()
+                            SettingsInfo(Icons.Rounded.Tune,"Focus peaking / Zebra",
+                                "Planned  ·  not yet available")
                         }
                     }
                 }
             }
         }
-    }
-    }
-    dialog?.let { target ->
-        val options = when (target) {
-            "Photo resolution" -> listOf("Maximum available", "12 MP", "8 MP")
-            "Image format" -> listOf("JPEG", "HEIF")
-            "Video resolution" -> listOf("720p", "1080p", "4K")
-            else -> emptyList()
-        }
-        AlertDialog(onDismissRequest = { dialog = null },
-            title = { Text(target) },
-            text = { Column {
-                if (options.isEmpty()) Text("Adjust exposure using the camera's expanded header.")
-                options.forEach { option ->
-                    Text(option, Modifier.fillMaxWidth().clickable {
-                        when (target) {
-                            "Photo resolution" -> photoResolution = option
-                            "Image format" -> imageFormat = option
-                            "Video resolution" -> onVideoQuality(option)
-                        }
-                        dialog = null
-                    }.padding(14.dp))
-                }
-            } },
-            confirmButton = { TextButton(onClick = { dialog = null }) { Text("Close") } })
+        Spacer(Modifier.height(14.dp))
     }
 }
-
 @Composable
-private fun SettingsGroup(title: String, icon: ImageVector, accent: Color, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(start = 12.dp)) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
-            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+private fun SettingsSection(
+    title:String, icon:ImageVector, content:@Composable ColumnScope.()->Unit
+) {
+    Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
+        Row(Modifier.padding(start=10.dp),verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Icon(icon,null,tint=PocamPalette.Orange,modifier=Modifier.size(20.dp))
+            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=15.sp)
         }
-        Column(Modifier.fillMaxWidth().background(surface, RoundedCornerShape(28.dp))
-            .padding(horizontal = 18.dp, vertical = 12.dp), content = content)
+        Column(Modifier.fillMaxWidth().background(
+            PocamPalette.GlassLight,RoundedCornerShape(26.dp))
+            .border(1.dp,PocamPalette.Steel.copy(alpha=.22f),RoundedCornerShape(26.dp))
+            .padding(horizontal=17.dp,vertical=10.dp),content=content)
     }
 }
-
 @Composable
-private fun SettingsChoice(icon: ImageVector, title: String, value: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 15.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
+private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
+    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),
+        verticalAlignment=Alignment.CenterVertically) {
+        Icon(icon,null,tint=PocamPalette.Silver,modifier=Modifier.size(23.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
-            Text(value, color = Color.LightGray, fontSize = 12.sp)
+            Text(name,color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
+            Text(description,color=PocamPalette.Silver,fontSize=11.sp)
         }
-        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Color.LightGray)
     }
 }
-
 @Composable
-private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String,
-    checked: Boolean, accent: Color, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = if (enabled) Color.White else Color.Gray, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
+private fun SettingsSwitch(icon:ImageVector,name:String,description:String,
+    value:Boolean,onChange:(Boolean)->Unit,enabled:Boolean=true) {
+    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+        Icon(icon,null,tint=if(enabled)PocamPalette.Silver else PocamPalette.Steel,
+            modifier=Modifier.size(23.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (enabled) Color.White else Color.Gray, fontWeight = FontWeight.Medium)
-            Text(subtitle, color = Color.LightGray, fontSize = 12.sp)
+            Text(name,color=if(enabled)Color.White else PocamPalette.Steel,
+                fontSize=14.sp,fontWeight=FontWeight.Medium)
+            Text(description,color=PocamPalette.Silver,fontSize=11.sp)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled,
-            colors = SwitchDefaults.colors(checkedTrackColor = accent))
+        Switch(checked=value,onCheckedChange=onChange,enabled=enabled,
+            colors=SwitchDefaults.colors(
+                checkedTrackColor=PocamPalette.Orange,
+                checkedThumbColor=Color.White,
+                uncheckedTrackColor=PocamPalette.Graphite,
+                uncheckedThumbColor=PocamPalette.Silver
+            ))
+    }
+}
+@Composable private fun SettingsSeparator(){
+    HorizontalDivider(color=PocamPalette.Steel.copy(alpha=.23f))
+}
+@Composable private fun SettingsChip(label:String,selected:Boolean,onClick:()->Unit){
+    Box(Modifier.background(if(selected)PocamPalette.Orange else PocamPalette.Graphite,CircleShape)
+        .clickable(onClick=onClick).padding(horizontal=14.dp,vertical=8.dp),
+        contentAlignment=Alignment.Center) {
+        Text(label,color=if(selected)PocamPalette.Black else Color.White,fontSize=11.sp)
     }
 }

@@ -95,6 +95,8 @@ class CameraController(private val context: Context) {
     private var recording: Recording? = null
     private var recordingActive = false
     private var requestedVideoQuality = Quality.FHD
+    private var videoStabilizationEnabled = true
+    fun setVideoStabilizationEnabled(enabled: Boolean) { videoStabilizationEnabled = enabled }
     fun setVideoQuality(quality: Quality) { requestedVideoQuality = quality }
     fun getVideoQuality(): Quality = requestedVideoQuality
     private var bindGeneration = 0
@@ -259,7 +261,7 @@ class CameraController(private val context: Context) {
                             val recorder = Recorder.Builder()
                                 .setQualitySelector(QualitySelector.from(requestedVideoQuality, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))).build()
                             val video = VideoCapture.Builder(recorder)
-                                .setVideoStabilizationEnabled(true).build()
+                                .setVideoStabilizationEnabled(videoStabilizationEnabled).build()
                             camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
                             videoCapture = video
                         } else {
