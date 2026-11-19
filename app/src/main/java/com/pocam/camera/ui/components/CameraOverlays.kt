@@ -128,10 +128,6 @@ fun ZoomRail(
                 val cx = size.width / 2f
                 val radius = size.width * .62f
                 val cy = size.height + radius * .58f
-                drawArc(Color(0xE91B1F28), 198f, 144f, false,
-                    topLeft = Offset(cx - radius, cy - radius),
-                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
-                    style = Stroke(44.dp.toPx()))
                 for (i in 0..48) {
                     val theta = Math.toRadians((198f + 144f * i / 48f).toDouble())
                     val major = i % 8 == 0
@@ -141,15 +137,21 @@ fun ZoomRail(
                     val y1 = cy + r1 * kotlin.math.sin(theta).toFloat()
                     val x2 = cx + r2 * kotlin.math.cos(theta).toFloat()
                     val y2 = cy + r2 * kotlin.math.sin(theta).toFloat()
-                    drawLine(if (i / 48f <= animated) accent else Color.White.copy(alpha = .38f),
+                    // Feather the outer edges rather than clipping or hiding ticks.
+                    val edge = kotlin.math.min(i, 48 - i) / 9f
+                    val opacity = (edge.coerceIn(0f, 1f) * edge.coerceIn(0f, 1f) * (3f - 2f * edge.coerceIn(0f, 1f)))
+                        .coerceAtLeast(.05f)
+                    drawLine(if (i / 48f <= animated) accent.copy(alpha = opacity)
+                        else Color.White.copy(alpha = .52f * opacity),
                         Offset(x1, y1), Offset(x2, y2),
                         if (major) 2.dp.toPx() else 1.dp.toPx())
                 }
                 val theta = Math.toRadians((198f + 144f * animated).toDouble())
                 val x = cx + (radius - 17.dp.toPx()) * kotlin.math.cos(theta).toFloat()
                 val y = cy + (radius - 17.dp.toPx()) * kotlin.math.sin(theta).toFloat()
-                drawCircle(accent, 5.dp.toPx(), Offset(x, y))
-                drawCircle(Color.White, 2.dp.toPx(), Offset(x, y))
+                val markerFade = (kotlin.math.min(animated, 1f - animated) * 12f).coerceIn(.15f, 1f)
+                drawCircle(accent.copy(alpha = markerFade), 5.dp.toPx(), Offset(x, y))
+                drawCircle(Color.White.copy(alpha = markerFade), 2.dp.toPx(), Offset(x, y))
             }
         }
     }
