@@ -460,8 +460,7 @@ fun CameraScreen() {
         // settings tree over a live camera SurfaceView causes large GPU overdraw
         // and frame skips on some Android devices. Immediate navigation is cheaper.
         if (showSettings) {
-            Box(Modifier.fillMaxSize().zIndex(30f)) {
-            Column(Modifier.fillMaxSize()
+            Column(Modifier.fillMaxSize().zIndex(30f)
                 .background(PocamPalette.Carbon)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
