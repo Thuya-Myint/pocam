@@ -28,6 +28,10 @@ import androidx.compose.ui.unit.dp
 import com.pocam.camera.domain.model.CameraMode
 import kotlinx.coroutines.withTimeoutOrNull
 
+// Keep shutter long-press gestures in exactly the same order as the curved strip.
+private val shutterModes = listOf(CameraMode.VIDEO, CameraMode.NIGHT,
+    CameraMode.PHOTO, CameraMode.PRO, CameraMode.PORTRAIT)
+
 @Composable
 fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = false, onCapture: () -> Unit, onSound: () -> Unit = {}, onModeSelected: (CameraMode) -> Unit, onWheelChange: (Boolean) -> Unit = {}, onHoverMode: (CameraMode) -> Unit = {}) {
     val haptics = LocalHapticFeedback.current
@@ -53,7 +57,7 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                         }
                         val pointerId = down.id
                         pressing = true
-                        val releasedBeforeHold = withTimeoutOrNull(450L) {
+                        val releasedBeforeHold = withTimeoutOrNull(350L) {
                             var released = false
                             while (!released) {
                                 val event = awaitPointerEvent()
@@ -77,30 +81,30 @@ fun ShutterButton(mode: CameraMode, busy: Boolean = false, recording: Boolean = 
                             var pressed = true
                             var horizontalDistance = 0f
                             var previousX: Float? = null
-                            var currentIndex = wheelModes.indexOf(mode).coerceAtLeast(0)
+                            var currentIndex = shutterModes.indexOf(mode).coerceAtLeast(0)
                             while (pressed) {
                                 val event = awaitPointerEvent()
                                 val change = event.changes.firstOrNull { it.id == pointerId }
                                 if (change == null || !change.pressed) {
                                     pressed = false
                                 } else {
-                                    // Horizontal swipes rotate the circular carousel.
+                                    // Horizontal swipes move across the same five modes shown in the curved ribbon.
                                     // A full step requires 42dp; movement works in both directions.
                                     val oldX = previousX
                                     if (oldX != null) {
                                         horizontalDistance += change.position.x - oldX
                                         val step = 42.dp.toPx()
                                         while (horizontalDistance >= step) {
-                                            currentIndex = (currentIndex + 1) % wheelModes.size
+                                            currentIndex = (currentIndex + 1) % shutterModes.size
                                             horizontalDistance -= step
                                         }
                                         while (horizontalDistance <= -step) {
-                                            currentIndex = (currentIndex - 1 + wheelModes.size) % wheelModes.size
+                                            currentIndex = (currentIndex - 1 + shutterModes.size) % shutterModes.size
                                             horizontalDistance += step
                                         }
                                     }
                                     previousX = change.position.x
-                                    val next = wheelModes[currentIndex]
+                                    val next = shutterModes[currentIndex]
                                     if (next != hovered) {
                                         soundNow()
                                         hovered = next
