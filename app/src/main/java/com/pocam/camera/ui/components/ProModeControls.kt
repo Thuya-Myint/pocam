@@ -137,13 +137,15 @@ fun ProParameterTray(
             listOf("ISO", "SHUTTER", "WB", "FOCUS", "EV").forEach { item ->
                 val selected = active == item
                 Box(Modifier.weight(1f)
-                    .background(if (selected) PocamPalette.Orange else PocamPalette.Graphite,
-                        CircleShape)
+                     .background(if (selected) PocamPalette.Orange.copy(alpha = .13f)
+                        else PocamPalette.Graphite, CircleShape)
+                    .border(if (selected) 1.dp else 0.dp,
+                        if (selected) PocamPalette.Orange else Color.Transparent, CircleShape)
                     .clickable { state.selected = item }
                     .padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
                     Text(if (item == "SHUTTER") "S" else item, fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (selected) PocamPalette.Black else Color.White)
+                        color = if (selected) PocamPalette.Orange else Color.White)
                 }
             }
             Box(Modifier.size(30.dp).background(PocamPalette.Graphite, CircleShape)
@@ -278,12 +280,15 @@ private fun NotSupported(message:String) {
 private fun PresetRow(presets:List<String>,active:String,onChoose:(String)->Unit) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
         presets.forEach { label ->
-            Box(Modifier.weight(1f).background(
-                if(label==active)PocamPalette.Orange else PocamPalette.Graphite,CircleShape)
+            Box(Modifier.weight(1f)
+                .background(if(label==active)PocamPalette.Orange.copy(alpha=.13f)
+                    else PocamPalette.Graphite,CircleShape)
+                .border(if(label==active)1.dp else 0.dp,
+                    if(label==active)PocamPalette.Orange else Color.Transparent,CircleShape)
                 .clickable{onChoose(label)}.padding(vertical=7.dp),
                 contentAlignment=Alignment.Center) {
                 Text(label,fontSize=10.sp,fontWeight=FontWeight.Bold,
-                    color=if(label==active)PocamPalette.Black else Color.White)
+                    color=if(label==active)PocamPalette.Orange else Color.White)
             }
         }
     }
