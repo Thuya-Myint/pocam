@@ -6,6 +6,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -270,80 +272,112 @@ fun CameraScreen() {
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
 
-        // Minimal floating header: no opaque bar, no second toolbar.
-        Row(Modifier.align(Alignment.TopCenter).zIndex(12f).fillMaxWidth()
-            .statusBarsPadding().padding(start = 18.dp, end = 18.dp, top = 40.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("CAMERA", color = Color.White.copy(alpha = .9f), fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
-            }
-            if (!wheelOpen) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Style 4: floating controls. The chevron expands this surface vertically.
+        if (!wheelOpen && !showSettings) {
+            Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
+                .statusBarsPadding().padding(top = 32.dp, start = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                    Box(Modifier.size(44.dp)
+                        .background(Color(0xAA303038), CircleShape)
+                        .clickable { showMore = !showMore },
                         contentAlignment = Alignment.Center) {
-                        IconButton(onClick = {
+                        Icon(if (showMore) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
+                            tint = Color.White)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
+                            contentAlignment = Alignment.Center) {
+                            IconButton(onClick = {
+                                if (controller.hasTorch()) {
+                                    torchEnabled = !torchEnabled
+                                    controller.setTorch(torchEnabled)
+                                }
+                            }) {
+                                Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                                    contentDescription = "Toggle torch",
+                                    tint = if (torchEnabled) accent else Color.White)
+                            }
+                        }
+                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
+                            contentAlignment = Alignment.Center) {
+                            IconButton(onClick = {
+                                gridEnabled = !gridEnabled
+                                preferences.edit().putBoolean("grid", gridEnabled).apply()
+                            }) {
+                                Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
+                                    tint = if (gridEnabled) accent else Color.White)
+                            }
+                        }
+                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
+                            contentAlignment = Alignment.Center) {
+                            IconButton(onClick = { showMore = false; showSettings = true }) {
+                                Icon(Icons.Rounded.Tune, contentDescription = "Open settings page",
+                                    tint = Color.White)
+                            }
+                        }
+                    }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showMore,
+                    enter = fadeIn(tween(220)) + expandVertically(tween(280)),
+                    exit = fadeOut(tween(160)) + shrinkVertically(tween(230))
+                ) {
+                    Column(Modifier.fillMaxWidth()
+                        .shadow(10.dp, RoundedCornerShape(24.dp))
+                        .background(Color(0xE8292C34), RoundedCornerShape(24.dp))
+                        .padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(Modifier.fillMaxWidth().clickable {
                             previewView?.let { view ->
                                 if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
                                 focusLocked = controller.isFocusLocked()
                             }
-                        }) {
+                        }, verticalAlignment = Alignment.CenterVertically) {
                             Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                                contentDescription = if (focusLocked) "Unlock focus" else "Lock focus",
-                                tint = if (focusLocked) accent else Color.White)
+                                contentDescription = null, tint = accent)
+                            Spacer(Modifier.width(12.dp))
+                            Text(if (focusLocked) "Unlock focus" else "Lock focus", color = Color.White)
                         }
-                    }
-                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        IconButton(onClick = {
-                            if (controller.hasTorch()) {
-                                torchEnabled = !torchEnabled
-                                controller.setTorch(torchEnabled)
+                        Row(Modifier.fillMaxWidth().clickable {
+                            crosshairEnabled = !crosshairEnabled
+                            preferences.edit().putBoolean("crosshair", crosshairEnabled).apply()
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
+                            Spacer(Modifier.width(12.dp))
+                            Text(if (crosshairEnabled) "Hide level guide" else "Show level guide",
+                                color = Color.White)
+                        }
+                        Text("CAPTURE TIMER", color = accent, fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            listOf(0, 3, 5, 10).forEach { seconds ->
+                                Box(Modifier.background(
+                                    if (timerSeconds == seconds) accent else Color(0xFF41434C),
+                                    CircleShape).clickable {
+                                        timerSeconds = seconds
+                                        preferences.edit().putInt("timer", seconds).apply()
+                                    }.padding(horizontal = 17.dp, vertical = 11.dp),
+                                    contentAlignment = Alignment.Center) {
+                                    Text(if (seconds == 0) "OFF" else "${seconds}s",
+                                        color = if (timerSeconds == seconds) Color.Black else Color.White,
+                                        fontSize = 12.sp)
+                                }
                             }
-                        }) {
-                            Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
-                                contentDescription = "Toggle torch", tint = if (torchEnabled) accent else Color.White)
-                        }
-                    }
-                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        IconButton(onClick = {
-                            gridEnabled = !gridEnabled
-                            preferences.edit().putBoolean("grid", gridEnabled).apply()
-                        }) {
-                            Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
-                                tint = if (gridEnabled) accent else Color.White)
-                        }
-                    }
-                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        IconButton(onClick = { showMore = !showMore; showSettings = false }) {
-                            Icon(if (showMore) Icons.Rounded.Close else Icons.Rounded.MoreHoriz,
-                                contentDescription = "More camera controls",
-                                tint = if (showMore) accent else Color.White)
-                        }
-                    }
-                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        IconButton(onClick = { showSettings = !showSettings; showMore = false }) {
-                            Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
-                                tint = if (showSettings) accent else Color.White)
                         }
                     }
                 }
             }
-        }
-        if (!wheelOpen) {
-            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 106.dp)
-                .background(Color(0x77303842), CircleShape)
+            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding()
+                .padding(top = 106.dp).background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             if (mode == CameraMode.PRO) {
-                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 108.dp, end = 18.dp)
+                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding()
+                    .padding(top = 108.dp, end = 18.dp)
                     .background(Color(0x88303842), CircleShape)) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
@@ -352,51 +386,23 @@ fun CameraScreen() {
                 }
             }
         }
-        AnimatedVisibility(showMore && !wheelOpen && editPhoto == null,
-            modifier = Modifier.align(Alignment.TopEnd).zIndex(16f)
-                .statusBarsPadding().padding(top = 100.dp, end = 18.dp),
-            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
-            exit = fadeOut(tween(150)) + shrinkVertically(tween(200))) {
-            Column(Modifier.width(220.dp)
-                .shadow(12.dp, RoundedCornerShape(22.dp))
-                .background(Color(0xEE20242C), RoundedCornerShape(22.dp))
-                .padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("QUICK CONTROLS", color = accent, fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Row(Modifier.fillMaxWidth().clickable {
-                    previewView?.let { view ->
-                        if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
-                        focusLocked = controller.isFocusLocked()
-                    }
-                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                        contentDescription = null, tint = accent)
-                    Spacer(Modifier.width(12.dp))
-                    Text(if (focusLocked) "Unlock focus" else "Lock focus", color = Color.White)
-                }
-                Row(Modifier.fillMaxWidth().clickable {
-                    gridEnabled = !gridEnabled
-                    preferences.edit().putBoolean("grid", gridEnabled).apply()
-                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
-                    Spacer(Modifier.width(12.dp))
-                    Text(if (gridEnabled) "Hide grid" else "Show grid", color = Color.White)
-                }
-                Row(Modifier.fillMaxWidth().clickable {
-                    showMore = false
-                    showSettings = true
-                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Tune, contentDescription = null, tint = accent)
-                    Spacer(Modifier.width(12.dp))
-                    Text("All settings", color = Color.White)
-                }
-            }
-        }
+        // Dedicated full-screen settings page, not a floating dropdown.
         if (showSettings && !wheelOpen) {
-            Box(Modifier.align(Alignment.TopCenter).zIndex(15f)
-                .statusBarsPadding().padding(top = 152.dp, start = 12.dp, end = 12.dp)
-                .heightIn(max = (availableHeight - 310.dp).coerceAtLeast(180.dp))
-                .verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxSize().zIndex(30f)
+                .background(Color(0xFF111319))
+                .statusBarsPadding().navigationBarsPadding()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { showSettings = false }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Back to camera",
+                            tint = Color.White)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Settings", color = Color.White, fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold)
+                }
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp)) {
             ViewfinderSettings(
                 grid = gridEnabled,
                 onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
@@ -426,6 +432,7 @@ fun CameraScreen() {
                 },
                 onClose = { showSettings = false }
             )
+                }
             }
         }
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
