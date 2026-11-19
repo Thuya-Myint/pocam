@@ -191,6 +191,7 @@ fun CameraScreen() {
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    var showMoreExposure by remember { mutableStateOf(false) }
     var focusLocked by remember { mutableStateOf(false) }
     var shutterPressed by remember { mutableStateOf(false) }
     var captureFlash by remember { mutableStateOf(false) }
@@ -334,8 +335,13 @@ fun CameraScreen() {
                             contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
                             tint = Color.White)
                     }
-                    Text("pocam.", color = Color.White, fontSize = 21.sp,
-                        fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                    Row(Modifier.weight(1f).padding(start = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("pocam", color = Color.White, fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold)
+                        Text(".", color = PocamPalette.Orange, fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
                             contentAlignment = Alignment.Center) {
@@ -369,74 +375,66 @@ fun CameraScreen() {
                         }
                     }
                 }
-                androidx.compose.animation.AnimatedVisibility(
+                AnimatedVisibility(
                     visible = showMore,
-                    enter = fadeIn(tween(130)),
-                    exit = fadeOut(tween(90))
+                    enter = fadeIn(tween(145)) + slideInVertically(tween(175)) { -it / 6 },
+                    exit = fadeOut(tween(100)) + slideOutVertically(tween(130)) { -it / 6 }
                 ) {
-                    Column(Modifier.fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Row(Modifier.fillMaxWidth().clickable {
-                            previewView?.let { view ->
-                                if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
-                                focusLocked = controller.isFocusLocked()
-                                focusLockPoint = if (focusLocked) Pair(.5f, .5f) else null
-                                focusPoint = focusLockPoint
-                            }
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(44.dp).background(PocamPalette.Graphite, CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                                    contentDescription = null, tint = accent)
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (focusLocked) "Unlock focus" else "Lock focus", color = Color.White)
-                        }
-                        Row(Modifier.fillMaxWidth().clickable {
-                            crosshairEnabled = !crosshairEnabled
-                            preferences.edit().putBoolean("crosshair", crosshairEnabled).apply()
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(44.dp).background(PocamPalette.Graphite, CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (crosshairEnabled) "Hide level guide" else "Show level guide",
-                                color = Color.White)
-                        }
-                        if (exposureRange.first < exposureRange.last) {
-                            Text("EXPOSURE  ${exposureIndex} EV STEPS", color = accent,
-                                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            StraightRuler(
-                                value = exposureIndex.toFloat(),
-                                valueRange = exposureRange.first.toFloat()..exposureRange.last.toFloat(),
-                                onValueChange = {
-                                    val next = it.toInt().coerceIn(exposureRange)
-                                    if (next != exposureIndex) {
-                                        exposureIndex = next
-                                        controller.setExposure(next)
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("QUICK CONTROLS", color = PocamPalette.Orange,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            @Composable
+                            fun Quick(label: String, selected: Boolean,
+                                icon: androidx.compose.ui.graphics.vector.ImageVector,
+                                onClick: () -> Unit) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Box(Modifier.size(52.dp)
+                                        .background(if(selected) PocamPalette.Orange.copy(alpha=.18f)
+                                            else PocamPalette.Graphite,CircleShape)
+                                        .clickable(onClick=onClick),
+                                        contentAlignment = Alignment.Center) {
+                                        Icon(icon, contentDescription=label,
+                                            tint=if(selected)PocamPalette.Orange else Color.White,
+                                            modifier=Modifier.size(23.dp))
                                     }
-                                },
-                                label = "${exposureIndex}",
-                                onDetent = { playUiTone() }
-                            )
-                        }
-                        Text("CAPTURE TIMER", color = accent, fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            listOf(0, 3, 5, 10).forEach { seconds ->
-                                Box(Modifier.size(56.dp).background(
-                                    if (timerSeconds == seconds) accent else PocamPalette.Graphite,
-                                    CircleShape).clickable {
-                                        timerSeconds = seconds
-                                        preferences.edit().putInt("timer", seconds).apply()
-                                    },
-                                    contentAlignment = Alignment.Center) {
-                                    Text(if (seconds == 0) "OFF" else "${seconds}s",
-                                        color = if (timerSeconds == seconds) Color.Black else Color.White,
-                                        fontSize = 12.sp)
+                                    Text(label,color=PocamPalette.Silver,fontSize=10.sp)
                                 }
                             }
+                            Quick("Torch",torchEnabled,Icons.Rounded.FlashOn) {
+                                if(controller.hasTorch()) {
+                                    torchEnabled=!torchEnabled
+                                    controller.setTorch(torchEnabled)
+                                }
+                            }
+                            Quick("Grid",gridEnabled,Icons.Rounded.GridOn) {
+                                gridEnabled=!gridEnabled
+                                preferences.edit().putBoolean("grid",gridEnabled).apply()
+                            }
+                            Quick("Timer ${timerSeconds}s",timerSeconds>0,Icons.Rounded.Timer) {
+                                val values=listOf(0,3,5,10)
+                                timerSeconds=values[(values.indexOf(timerSeconds)+1)
+                                    .coerceAtLeast(0)%values.size]
+                                preferences.edit().putInt("timer",timerSeconds).apply()
+                            }
+                            Quick("EV",exposureIndex!=0,Icons.Rounded.Tune) {
+                                showMoreExposure=!showMoreExposure
+                            }
                         }
-                        Spacer(Modifier.height(12.dp))
+                        AnimatedVisibility(showMoreExposure && exposureRange.first<exposureRange.last) {
+                            StraightRuler(
+                                value=exposureIndex.toFloat(),
+                                valueRange=exposureRange.first.toFloat()..exposureRange.last.toFloat(),
+                                onValueChange={
+                                    exposureIndex=it.toInt().coerceIn(exposureRange)
+                                    controller.setExposure(exposureIndex)
+                                },
+                                label="${exposureIndex} EV steps",
+                                onDetent={playUiTone()}
+                            )
+                        }
                     }
                 }
             }
@@ -446,16 +444,7 @@ fun CameraScreen() {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
-            if (false && mode == CameraMode.PRO) {
-                Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = 108.dp, end = 18.dp)
-                    .background(Color(0x88303842), CircleShape)) {
-                    IconButton(onClick = { showProPanel = !showProPanel }) {
-                        Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
-                            contentDescription = "Pro controls", tint = accent)
-                    }
-                }
-            }
+
         }
         // Dedicated full-screen settings page, not a floating dropdown.
         AnimatedVisibility(visible = showSettings,

@@ -35,12 +35,7 @@ fun ManualControls(
     onExposure: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val accent = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            dynamicDarkColorScheme(context).primary
-        else Color(0xFFFFD88C)
-    }
+    val accent = PocamPalette.Orange
     var caps by remember { mutableStateOf<CameraController.ManualCapabilities?>(null) }
     var isoFraction by remember { mutableFloatStateOf(0f) }
     var shutterFraction by remember { mutableFloatStateOf(0f) }

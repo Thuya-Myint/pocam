@@ -12,6 +12,17 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -30,58 +41,111 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Offline, non-destructive editor. Exports a new JPEG rather than overwriting the original. */
+/** Offline non-destructive photo editor with the Pocam studio design. */
 @Composable
 fun PhotoEditor(uri: Uri, onClose: () -> Unit, onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
     var brightness by remember(uri) { mutableFloatStateOf(0f) }
     var contrast by remember(uri) { mutableFloatStateOf(1f) }
     var rotation by remember(uri) { mutableIntStateOf(0) }
+    var selected by remember { mutableStateOf("Brightness") }
     var saving by remember { mutableStateOf(false) }
-    val source by produceState<Bitmap?>(initialValue = null, key1 = uri) {
-        value = withContext(Dispatchers.IO) {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    BitmapFactory.decodeStream(input)
-                }
-            } catch (_: Exception) { null }
+    val source by produceState<Bitmap?>(initialValue=null,key1=uri) {
+        value=withContext(Dispatchers.IO) {
+            try { context.contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) }
+            catch (_:Exception) { null }
         }
     }
-    val preview = remember(source, brightness, contrast, rotation) {
-        source?.let { processPhoto(it, brightness, contrast, rotation) }
+    val preview=remember(source,brightness,contrast,rotation) {
+        source?.let { processPhoto(it,brightness,contrast,rotation) }
     }
-    Box(Modifier.fillMaxSize().background(Color(0xFF111216)), contentAlignment = Alignment.Center) {
-        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("PHOTO EDITOR", color = Color.White, style = MaterialTheme.typography.titleMedium)
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                if (preview != null) Image(preview.asImageBitmap(), "Edited photo preview",
-                    Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                else CircularProgressIndicator()
+    Column(
+        Modifier.fillMaxSize()
+            .background(PocamPalette.Black)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .navigationBarsPadding()
+            .padding(16.dp),
+        verticalArrangement=Arrangement.spacedBy(12.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).background(PocamPalette.Graphite,CircleShape)
+                .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
+                Text("×",color=Color.White,fontSize=28.sp)
             }
-            Text("Brightness", color = Color.White)
-            Slider(brightness, { brightness = it }, valueRange = -80f..80f)
-            Text("Contrast", color = Color.White)
-            Slider(contrast, { contrast = it }, valueRange = .5f..1.5f)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { rotation = (rotation + 90) % 360 }) { Text("Rotate 90°") }
-                OutlinedButton(onClick = {
-                    brightness = 0f; contrast = 1f; rotation = 0
-                }) { Text("Reset") }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Edit photo",color=Color.White,
+                    fontSize=22.sp,fontWeight=FontWeight.Bold)
+                Text("Non-destructive  ·  Save a copy",
+                    color=PocamPalette.Silver,fontSize=11.sp)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedButton(onClick = onClose) { Text("Cancel") }
-                Button(enabled = preview != null && !saving, onClick = {
-                    val bitmap = preview ?: return@Button
-                    saving = true
-                    scope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            try { saveEditedPhoto(context, bitmap) } catch (_: Exception) { null }
-                        }
-                        saving = false
-                        if (result != null) onSaved(result) else onError("Unable to save edited photo")
+        }
+        Box(Modifier.fillMaxWidth().weight(1f)
+            .background(PocamPalette.Carbon,RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(22.dp)),contentAlignment=Alignment.Center) {
+            if(preview!=null) Image(preview.asImageBitmap(),"Live edited preview",
+                Modifier.fillMaxSize(),contentScale=ContentScale.Fit)
+            else CircularProgressIndicator(color=PocamPalette.Orange)
+        }
+        Column(
+            Modifier.fillMaxWidth().background(
+                PocamPalette.GlassLight,RoundedCornerShape(25.dp))
+                .padding(14.dp),
+            verticalArrangement=Arrangement.spacedBy(12.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                listOf("Brightness","Contrast","Rotate").forEach { tab ->
+                    Box(Modifier.weight(1f)
+                        .background(if(selected==tab)PocamPalette.Orange
+                            else PocamPalette.Graphite,CircleShape)
+                        .clickable { selected=tab }.padding(vertical=10.dp),
+                        contentAlignment=Alignment.Center) {
+                        Text(tab,color=if(selected==tab)PocamPalette.Black else Color.White,
+                            fontSize=11.sp,fontWeight=FontWeight.Bold)
                     }
-                }) { Text(if (saving) "Saving…" else "Save copy") }
+                }
+            }
+            when(selected) {
+                "Brightness" -> {
+                    Text("Brightness  ${brightness.toInt()}",color=Color.White)
+                    Slider(brightness,{brightness=it},valueRange=-80f..80f)
+                }
+                "Contrast" -> {
+                    Text("Contrast  ${String.format(Locale.US,"%.2f",contrast)}",color=Color.White)
+                    Slider(contrast,{contrast=it},valueRange=.5f..1.5f)
+                }
+                else -> {
+                    Text("Rotation  $rotation°",color=Color.White)
+                    Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(onClick={rotation=(rotation+270)%360}){ Text("↺ 90°") }
+                        OutlinedButton(onClick={rotation=(rotation+90)%360}){ Text("↻ 90°") }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                OutlinedButton(onClick={brightness=0f;contrast=1f;rotation=0}) {
+                    Text("Reset")
+                }
+                Button(
+                    enabled=preview!=null&&!saving,
+                    onClick={
+                        val bitmap=preview?:return@Button
+                        saving=true
+                        scope.launch {
+                            val result=withContext(Dispatchers.IO) {
+                                try { saveEditedPhoto(context,bitmap) }
+                                catch (_:Exception) { null }
+                            }
+                            saving=false
+                            if(result!=null)onSaved(result)
+                            else onError("Unable to save edited photo")
+                        }
+                    }
+                ) {
+                    Text(if(saving)"Saving…" else "Save copy",
+                        color=PocamPalette.Black,fontWeight=FontWeight.Bold)
+                }
             }
         }
     }
