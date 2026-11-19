@@ -1,9 +1,6 @@
 package com.pocam.camera.ui.screen
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -276,12 +273,9 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .statusBarsPadding().padding(top = 16.dp, start = 16.dp, end = 16.dp)
-                .shadow(12.dp, RoundedCornerShape(30.dp))
-                .background(Color(0xE9111319), RoundedCornerShape(30.dp))
-                .animateContentSize(animationSpec = tween(durationMillis = 340))
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                .background(Color(0xEB111319))
+                .statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(44.dp)
@@ -327,13 +321,11 @@ fun CameraScreen() {
                 }
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showMore,
-                    enter = fadeIn(tween(260)) + expandVertically(animationSpec = tween(340), expandFrom = Alignment.Top),
-                    exit = fadeOut(tween(180)) + shrinkVertically(animationSpec = tween(260), shrinkTowards = Alignment.Top)
+                    enter = fadeIn(tween(130)),
+                    exit = fadeOut(tween(90))
                 ) {
                     Column(Modifier.fillMaxWidth()
-                        .shadow(10.dp, RoundedCornerShape(24.dp))
-                        .background(Color(0xE8292C34), RoundedCornerShape(24.dp))
-                        .padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        .padding(horizontal = 6.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Row(Modifier.fillMaxWidth().clickable {
                             previewView?.let { view ->
                                 if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
@@ -393,8 +385,8 @@ fun CameraScreen() {
         }
         // Dedicated full-screen settings page, not a floating dropdown.
         AnimatedVisibility(visible = showSettings && !wheelOpen,
-            enter = slideInVertically(animationSpec = tween(360), initialOffsetY = { it / 4 }) + fadeIn(tween(320)),
-            exit = slideOutVertically(animationSpec = tween(280), targetOffsetY = { it / 4 }) + fadeOut(tween(220)),
+            enter = slideInVertically(animationSpec = tween(190), initialOffsetY = { it / 8 }) + fadeIn(tween(160)),
+            exit = slideOutVertically(animationSpec = tween(150), targetOffsetY = { it / 8 }) + fadeOut(tween(130)),
             modifier = Modifier.fillMaxSize().zIndex(30f)) {
             Column(Modifier.fillMaxSize()
                 .background(Color(0xFF111319))
