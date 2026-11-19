@@ -94,75 +94,100 @@ fun ZoomRail(
     val latestMax by rememberUpdatedState(safeMax)
     var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val fraction = ((selected - 1f) / (safeMax - 1f)).coerceIn(0f, 1f)
-    val animated by animateFloatAsState(fraction,
+    val animated by animateFloatAsState(
+        fraction,
         androidx.compose.animation.core.spring(
             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-            stiffness = 320f), label = "zoom dial")
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(String.format(java.util.Locale.US, "%.1f×", selected),
-            color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.background(Color(0xD91B1F28), RoundedCornerShape(20.dp))
-                .padding(horizontal = 18.dp, vertical = 5.dp))
-        Box(Modifier.fillMaxWidth().height(104.dp)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    fun update(x: Float) {
-                        // Snap both endpoints with generous hit targets; 1× is always reachable.
-                        val edge = 22.dp.toPx()
-                        val normalized = ((x - edge) / (size.width - edge * 2f).coerceAtLeast(1f))
-                            .coerceIn(0f, 1f)
-                        val tick = (normalized * 100).toInt()
-                        if (tick != lastTick) {
-                            lastTick = tick
-                            latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            stiffness = 320f
+        ),
+        label = "zoom dial"
+    )
+
+    // Transparent zoom ruler: fixed accent pointer, no dark label pill or dot.
+    // The scale is shortened to 80% of its previous visual width.
+    Box(modifier.fillMaxWidth().height(116.dp), contentAlignment = Alignment.TopCenter) {
+        Canvas(
+            Modifier.fillMaxWidth(.8f).height(100.dp)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        fun update(x: Float) {
+                            val edge = 18.dp.toPx()
+                            val normalized = ((x - edge) /
+                                (size.width - edge * 2f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                            val tick = (normalized * 100f).toInt()
+                            if (tick != lastTick) {
+                                lastTick = tick
+                                latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                latestTick()
+                            }
+                            latestSelect(if (normalized < .012f) 1f
+                                else 1f + normalized * (latestMax - 1f))
                         }
-                        val next = if (normalized < .012f) 1f
-                            else 1f + normalized * (latestMax - 1f)
-                        latestSelect(next)
+                        update(down.position.x)
+                        do {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change != null && change.pressed) {
+                                update(change.position.x)
+                                change.consume()
+                            }
+                        } while (event.changes.any { it.id == down.id && it.pressed })
                     }
-                    update(down.position.x)
-                    do {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id }
-                        if (change != null && change.pressed) {
-                            update(change.position.x)
-                            change.consume()
-                        }
-                    } while (event.changes.any { it.id == down.id && it.pressed })
                 }
-            }, contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val cx = size.width / 2f
-                val radius = size.width * .48f
-                val cy = size.height + radius * .34f
-                for (i in 0..100) {
-                    val theta = Math.toRadians((198f + 144f * i / 100f).toDouble())
-                    val major = i % 10 == 0
-                    val r1 = radius - if (major) 24.dp.toPx() else 17.dp.toPx()
-                    val r2 = radius - 7.dp.toPx()
-                    val x1 = cx + r1 * kotlin.math.cos(theta).toFloat()
-                    val y1 = cy + r1 * kotlin.math.sin(theta).toFloat()
-                    val x2 = cx + r2 * kotlin.math.cos(theta).toFloat()
-                    val y2 = cy + r2 * kotlin.math.sin(theta).toFloat()
-                    // Feather the outer edges rather than clipping or hiding ticks.
-                    val edge = kotlin.math.min(i, 100 - i) / 16f
-                    val opacity = (edge.coerceIn(0f, 1f) * edge.coerceIn(0f, 1f) * (3f - 2f * edge.coerceIn(0f, 1f)))
-                        .coerceAtLeast(.05f)
-                    drawLine(if (i / 100f <= animated) accent.copy(alpha = opacity)
-                        else Color.White.copy(alpha = .52f * opacity),
-                        Offset(x1, y1), Offset(x2, y2),
-                        if (major) 2.dp.toPx() else 1.dp.toPx())
-                }
-                val theta = Math.toRadians((198f + 144f * animated).toDouble())
-                val x = cx + (radius - 17.dp.toPx()) * kotlin.math.cos(theta).toFloat()
-                val y = cy + (radius - 17.dp.toPx()) * kotlin.math.sin(theta).toFloat()
-                val markerFade = (kotlin.math.min(animated, 1f - animated) * 12f).coerceIn(.15f, 1f)
-                drawCircle(accent.copy(alpha = markerFade), 5.dp.toPx(), Offset(x, y))
-                drawCircle(Color.White.copy(alpha = markerFade), 2.dp.toPx(), Offset(x, y))
+        ) {
+            val cx = size.width / 2f
+            val radius = size.width * .49f
+            val cy = radius + 9.dp.toPx()
+            // Draw white tick marks on the arc, fading gradually at either edge.
+            for (i in 0..100) {
+                val angle = Math.toRadians((198f + 144f * i / 100f).toDouble())
+                val edge = (kotlin.math.min(i, 100 - i) / 17f).coerceIn(0f, 1f)
+                val fade = (.07f + .93f * edge * edge * (3f - 2f * edge))
+                val major = i % 10 == 0
+                val distance = kotlin.math.abs(i / 100f - animated)
+                // Only the nearest five rods grow smoothly around the current zoom.
+                val proximity = (1f - distance * 100f / 3f).coerceIn(0f, 1f)
+                val length = (if (major) 21f else 12f) + 9f * proximity
+                val rOuter = radius
+                val rInner = radius - length.dp.toPx()
+                val cosine = kotlin.math.cos(angle).toFloat()
+                val sine = kotlin.math.sin(angle).toFloat()
+                val tint = if (proximity > .01f) {
+                    Color.White.copy(alpha = (.58f + .42f * proximity) * fade)
+                } else Color.White.copy(alpha = .65f * fade)
+                drawLine(
+                    tint,
+                    Offset(cx + rInner * cosine, cy + rInner * sine),
+                    Offset(cx + rOuter * cosine, cy + rOuter * sine),
+                    (if (major) 1.9f else 1.1f).dp.toPx() + 1.1.dp.toPx() * proximity,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
             }
+            // Fixed center pointer, independent of the scrolling zoom position.
+            val pointerY = cy - radius
+            val triangle = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx - 6.dp.toPx(), pointerY - 10.dp.toPx())
+                lineTo(cx + 6.dp.toPx(), pointerY - 10.dp.toPx())
+                lineTo(cx, pointerY - 2.dp.toPx())
+                close()
+            }
+            drawPath(triangle, accent)
+            drawLine(
+                accent,
+                Offset(cx, pointerY + 1.dp.toPx()),
+                Offset(cx, pointerY + 20.dp.toPx()),
+                2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
         }
+        Text(
+            String.format(java.util.Locale.US, "%.1f×", selected),
+            color = accent,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 53.dp)
+        )
     }
 }
 
