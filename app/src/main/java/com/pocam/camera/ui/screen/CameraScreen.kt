@@ -178,6 +178,7 @@ fun CameraScreen() {
     var showMore by remember { mutableStateOf(false) }
     var focusLocked by remember { mutableStateOf(false) }
     var wheelOpen by remember { mutableStateOf(false) }
+    var shutterPressed by remember { mutableStateOf(false) }
     var wheelHover by remember { mutableStateOf(CameraMode.PHOTO) }
     var captureFlash by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
@@ -275,8 +276,8 @@ fun CameraScreen() {
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xEB111319))
-                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(44.dp)
@@ -333,8 +334,10 @@ fun CameraScreen() {
                                 focusLocked = controller.isFocusLocked()
                             }
                         }, verticalAlignment = Alignment.CenterVertically) {
-                            Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                                contentDescription = null, tint = accent)
+                            Box(Modifier.size(44.dp).background(Color(0xFF30333B), CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                                    contentDescription = null, tint = accent)
+                            }
                             Spacer(Modifier.width(12.dp))
                             Text(if (focusLocked) "Unlock focus" else "Lock focus", color = Color.White)
                         }
@@ -342,7 +345,9 @@ fun CameraScreen() {
                             crosshairEnabled = !crosshairEnabled
                             preferences.edit().putBoolean("crosshair", crosshairEnabled).apply()
                         }, verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
+                            Box(Modifier.size(44.dp).background(Color(0xFF30333B), CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
+                            }
                             Spacer(Modifier.width(12.dp))
                             Text(if (crosshairEnabled) "Hide level guide" else "Show level guide",
                                 color = Color.White)
@@ -368,7 +373,7 @@ fun CameraScreen() {
                             fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             listOf(0, 3, 5, 10).forEach { seconds ->
-                                Box(Modifier.background(
+                                Box(Modifier.size(56.dp).background(
                                     if (timerSeconds == seconds) accent else Color(0xFF41434C),
                                     CircleShape).clickable {
                                         timerSeconds = seconds
@@ -381,6 +386,7 @@ fun CameraScreen() {
                                 }
                             }
                         }
+                        Spacer(Modifier.height(12.dp))
                     }
                 }
             }
@@ -454,7 +460,7 @@ fun CameraScreen() {
             }
         }
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
-        if (!wheelOpen && !showProPanel && !showSettings && !showMore && editPhoto == null) {
+        if (!wheelOpen && !showProPanel && !showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
                 .padding(bottom = 204.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
@@ -519,7 +525,8 @@ fun CameraScreen() {
                 }
                 Text("EV ${exposureIndex * controller.exposureStepEv()}",
                     color = Color.White, fontSize = 12.sp)
-                Slider(value = exposureIndex.toFloat(),
+                StraightRuler(value = exposureIndex.toFloat(),
+                    label = "${exposureIndex * controller.exposureStepEv()} EV",
                     onValueChange = {
                         exposureIndex = it.toInt().coerceIn(exposureRange.first, exposureRange.last)
                         controller.setExposure(exposureIndex)
@@ -527,7 +534,6 @@ fun CameraScreen() {
                     valueRange = exposureRange.first.toFloat()..
                         (if (exposureRange.first == exposureRange.last) 1f
                         else exposureRange.last.toFloat()),
-                    enabled = exposureRange.first != exposureRange.last,
                     modifier = Modifier.fillMaxWidth())
                 ManualControls(controller, cameraGeneration)
             }
@@ -593,6 +599,7 @@ fun CameraScreen() {
                     onSound = { playUiTone() },
                     onCapture = {
                         if (captureBusy) return@ShutterButton
+                        shutterPressed = true
                         if (mode == CameraMode.VIDEO) {
                             controller.toggleVideo(
                                 onSaved = { uri -> rememberMedia(uri) },
@@ -613,6 +620,7 @@ fun CameraScreen() {
                                 onSaved = { uri ->
                                     captureFlash = true
                                     captureBusy = false
+                                    shutterPressed = false
                                     rememberMedia(uri)
                                     Toast.makeText(context, "Saved to Pocam photos",
                                         Toast.LENGTH_SHORT).show()
@@ -621,6 +629,7 @@ fun CameraScreen() {
                                     countdown = null
                                     countdownJob = null
                                     captureBusy = false
+                                    shutterPressed = false
                                     error = it
                                 })
                             }
