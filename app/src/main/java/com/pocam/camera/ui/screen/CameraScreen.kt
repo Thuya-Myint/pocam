@@ -61,6 +61,7 @@ import android.net.Uri
 import android.content.pm.PackageManager
 import android.widget.Toast
 import android.view.MotionEvent
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -183,6 +184,7 @@ fun CameraScreen() {
     var captureFlash by remember { mutableStateOf(false) }
     var focusPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     var focusSequence by remember { mutableStateOf(0) }
+    var focusLockPoint by remember { mutableStateOf<Pair<Float, Float>?>(null) }
     var lastPhoto by remember {
         mutableStateOf(context.getSharedPreferences("pocam", 0)
             .getString("last_media_uri", null)?.let(Uri::parse))
@@ -204,7 +206,7 @@ fun CameraScreen() {
     LaunchedEffect(focusSequence) {
         if (focusSequence > 0) {
             delay(1100)
-            focusPoint = null
+            if (!focusLocked) focusPoint = null
         }
     }
     LaunchedEffect(captureFlash) {
@@ -231,18 +233,79 @@ fun CameraScreen() {
                         activeLensId = controller.activeCameraId()
                         activeFocalMm = controller.activeFocalLength()
                     })
-                    setOnTouchListener { view, event ->
-                        if (event.action == MotionEvent.ACTION_UP) {
-                            if (!focusLocked) controller.focusAt(this, event.x, event.y)
-                            focusPoint = Pair(
-                                (event.x / width.coerceAtLeast(1)).coerceIn(0f, 1f),
-                                (event.y / height.coerceAtLeast(1)).coerceIn(0f, 1f))
-                            focusSequence++
-                            view.performClick()
-                        }
-                        true
-                    }
+
                 }
+            }, update = { view ->
+                view.setOnTouchListener(object : android.view.View.OnTouchListener {
+                    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                    private var longPressed = false
+                    private var downX = 0f
+                    private var downY = 0f
+                    private var pending: Runnable? = null
+                    override fun onTouch(v: android.view.View, event: MotionEvent): Boolean {
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                longPressed = false
+                                downX = event.x
+                                downY = event.y
+                                pending = Runnable {
+                                    longPressed = true
+                                    if (!focusLocked) {
+                                        controller.lockFocusAt(view, downX, downY)
+                                        focusLocked = controller.isFocusLocked()
+                                focusLockPoint = if (focusLocked) Pair(0.5f, 0.5f) else null
+                                focusPoint = focusLockPoint
+                                        if (focusLocked) {
+                                            focusPoint = Pair(downX / view.width.coerceAtLeast(1),
+                                                downY / view.height.coerceAtLeast(1))
+                                            focusLockPoint = focusPoint
+                                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        }
+                                    }
+                                }.also { handler.postDelayed(it, 500L) }
+                                return true
+                            }
+                            MotionEvent.ACTION_MOVE -> {
+                                val slop = android.view.ViewConfiguration.get(v.context).scaledTouchSlop
+                                if (kotlin.math.abs(event.x - downX) > slop ||
+                                    kotlin.math.abs(event.y - downY) > slop) {
+                                    pending?.let(handler::removeCallbacks)
+                                }
+                                return true
+                            }
+                            MotionEvent.ACTION_UP -> {
+                                pending?.let(handler::removeCallbacks)
+                                if (!longPressed) {
+                                    if (!focusLocked) {
+                                        controller.focusAt(view, event.x, event.y)
+                                        focusPoint = Pair(event.x / view.width.coerceAtLeast(1),
+                                            event.y / view.height.coerceAtLeast(1))
+                                        focusSequence++
+                                    } else {
+                                        val point = focusLockPoint
+                                        if (point != null &&
+                                            kotlin.math.abs(event.x - point.first * view.width) < 60f &&
+                                            kotlin.math.abs(event.y - point.second * view.height) < 60f) {
+                                            controller.unlockFocus()
+                                            focusLocked = false
+                        focusLockPoint = null
+                                            focusLockPoint = null
+                                            focusPoint = null
+                                            v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        }
+                                    }
+                                    v.performClick()
+                                }
+                                return true
+                            }
+                            MotionEvent.ACTION_CANCEL -> {
+                                pending?.let(handler::removeCallbacks)
+                                return true
+                            }
+                        }
+                        return true
+                    }
+                })
             }, modifier = Modifier.fillMaxSize())
         }
         if (crosshairEnabled) {
@@ -276,7 +339,7 @@ fun CameraScreen() {
         if (!wheelOpen && !showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xEB111319))
-                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
+                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 34.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
@@ -646,6 +709,7 @@ fun CameraScreen() {
                         }
                         mode = it
                         focusLocked = false
+                        focusLockPoint = null
                         showMore = false
                         showProPanel = it == CameraMode.PRO
                         showSettings = false
@@ -684,6 +748,7 @@ fun CameraScreen() {
                         }
                         zoom = 1f
                         focusLocked = false
+                        focusLockPoint = null
                         torchEnabled = false
                     }
                 }, contentAlignment = Alignment.Center) {

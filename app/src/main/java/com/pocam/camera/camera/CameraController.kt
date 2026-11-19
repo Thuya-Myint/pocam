@@ -365,10 +365,12 @@ class CameraController(private val context: Context) {
     private var focusLocked = false
     fun isFocusLocked(): Boolean = focusLocked
 
-    fun lockFocus(view: PreviewView) {
+    fun lockFocus(view: PreviewView) = lockFocusAt(view, view.width / 2f, view.height / 2f)
+
+    fun lockFocusAt(view: PreviewView, x: Float, y: Float) {
         val activeCamera = camera ?: return
         if (activeMode == CameraMode.PRO && manualFocusDiopters != null) return
-        val point = view.meteringPointFactory.createPoint(view.width / 2f, view.height / 2f)
+        val point = view.meteringPointFactory.createPoint(x, y)
         val action = FocusMeteringAction.Builder(point,
             FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
             .disableAutoCancel().build()
