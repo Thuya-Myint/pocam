@@ -308,6 +308,17 @@ fun CameraScreen() {
                 })
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
+        if (wheelOpen && !showSettings) {
+            Box(Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = 258.dp)
+                .zIndex(15f)) {
+                RadialModeWheel(
+                    selected = wheelHover,
+                    modifier = Modifier.size(300.dp)
+                )
+            }
+        }
+
 
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!wheelOpen && !showSettings) {
