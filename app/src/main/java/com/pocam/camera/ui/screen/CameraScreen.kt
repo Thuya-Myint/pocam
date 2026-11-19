@@ -615,14 +615,9 @@ fun CameraScreen() {
                     .padding(top = if (showMore) 242.dp else 118.dp, end = 14.dp)
             )
         }
-        AnimatedVisibility(
-            visible = mode == CameraMode.PRO && showProPanel && !showSettings && editPhoto == null,
-            enter = fadeIn(tween(150)) + slideInVertically(tween(190)) { it / 5 },
-            exit = fadeOut(tween(110)) + slideOutVertically(tween(150)) { it / 5 },
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
-                .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, bottom = 140.dp)
-        ) {
+        // A compact Pro tray should respond immediately, not animate a translucent
+        // layout across the live preview while rebuilding Camera2 controls.
+        if (mode == CameraMode.PRO && showProPanel && !showSettings && editPhoto == null) {
             ProParameterTray(
                 state = proState,
                 controller = controller,
@@ -632,7 +627,10 @@ fun CameraScreen() {
                 exposureStepEv = controller.exposureStepEv(),
                 onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
                 onCollapse = { showProPanel = false },
-                modifier = Modifier.heightIn(max = 196.dp)
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 140.dp)
+                    .heightIn(max = 196.dp)
             )
         }
 
