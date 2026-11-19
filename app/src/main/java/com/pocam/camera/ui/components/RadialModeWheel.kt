@@ -1,39 +1,32 @@
 package com.pocam.camera.ui.components
 
 import android.os.Build
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.ui.draw.alpha
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Text
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pocam.camera.domain.model.CameraMode
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.*
 
 val wheelModes = listOf(CameraMode.PHOTO, CameraMode.VIDEO, CameraMode.PORTRAIT,
     CameraMode.NIGHT, CameraMode.MORE, CameraMode.PRO)
 
-// Icons occupy six equal sectors of a circular dial, starting at twelve o'clock.
 @Composable
 fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -41,33 +34,64 @@ fun RadialModeWheel(selected: CameraMode, modifier: Modifier = Modifier) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
         else Color(0xFFFFD88C)
     }
-    val selectedIndex = wheelModes.indexOf(selected).coerceAtLeast(0)
-    var targetRotation by remember { mutableFloatStateOf(-selectedIndex * 60f) }
-    LaunchedEffect(selectedIndex) {
-        val currentSector = ((-targetRotation / 60f).toInt() % wheelModes.size + wheelModes.size) % wheelModes.size
-        val forward = (selectedIndex - currentSector + wheelModes.size) % wheelModes.size
-        val steps = if (forward <= wheelModes.size / 2) forward else forward - wheelModes.size
-        targetRotation -= steps * 60f
+    val index = wheelModes.indexOf(selected).coerceAtLeast(0)
+    var target by remember { mutableFloatStateOf(0f) }
+    var previous by remember { mutableIntStateOf(index) }
+    LaunchedEffect(index) {
+        val raw = (index - previous + wheelModes.size) % wheelModes.size
+        val steps = if (raw <= wheelModes.size / 2) raw else raw - wheelModes.size
+        target -= steps * 60f
+        previous = index
     }
-    val rotation by animateFloatAsState(targetRotation, spring(stiffness = 260f), label = "mode carousel rotation")
-    Box(modifier.requiredSize(252.dp),
-        contentAlignment = Alignment.Center) {
-        wheelModes.forEachIndexed { index, mode ->
-            val angle = Math.toRadians((index * 60 - 90 + rotation).toDouble())
-            val x = (88.0 * cos(angle)).toFloat().dp
-            val y = (88.0 * sin(angle)).toFloat().dp
-            val active = selected == mode
-            val visibility = (1.0 - 0.35 * ((sin(angle) + 0.15) / 1.15).coerceIn(0.0, 1.0)).toFloat()
-            Box(Modifier.offset(x = x, y = y).size(52.dp).alpha(visibility)
-                .background(if (active) accent else Color(0xFF343944), CircleShape)
-                .border(1.dp, if (active) accent else Color.White.copy(alpha = .18f), CircleShape),
-                contentAlignment = Alignment.Center) {
-                Text(modeSymbol(mode),
-                    color = if (active) Color.Black else Color.White,
-                    fontSize = 25.sp, fontWeight = FontWeight.Bold)
+    val rotation by animateFloatAsState(target,
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 180f),
+        label = "smooth radial wheel")
+    Box(modifier.requiredSize(300.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.requiredSize(300.dp)) {
+            val center = Offset(size.width / 2, size.height / 2)
+            val outer = 144.dp.toPx()
+            val inner = 66.dp.toPx()
+            for (i in wheelModes.indices) {
+                val mid = -90f + i * 60f + rotation
+                val start = mid - 30f
+                val path = Path()
+                fun point(radius: Float, angle: Float): Offset {
+                    val rad = Math.toRadians(angle.toDouble())
+                    return Offset(center.x + radius * cos(rad).toFloat(),
+                        center.y + radius * sin(rad).toFloat())
+                }
+                path.moveTo(point(inner, start).x, point(inner, start).y)
+                for (j in 0..24) {
+                    val a = start + j * 60f / 24f
+                    val pt = point(outer, a)
+                    path.lineTo(pt.x, pt.y)
+                }
+                for (j in 24 downTo 0) {
+                    val a = start + j * 60f / 24f
+                    val pt = point(inner, a)
+                    path.lineTo(pt.x, pt.y)
+                }
+                path.close()
+                val isActive = i == index
+                drawPath(path, if (isActive) accent.copy(alpha = .62f)
+                    else Color(0xEE202733))
+                drawPath(path, if (isActive) accent else Color.White.copy(alpha = .16f),
+                    style = Stroke(1.2.dp.toPx()))
             }
+            drawCircle(Color(0xFF101720), inner)
+            drawCircle(accent.copy(alpha = .85f), inner, style = Stroke(2.dp.toPx()))
         }
-
+        wheelModes.forEachIndexed { i, mode ->
+            val rad = Math.toRadians((-90f + i * 60f + rotation).toDouble())
+            val x = (105 * cos(rad)).dp
+            val y = (105 * sin(rad)).dp
+            Text(modeSymbol(mode), color = if (i == index) Color.Black else Color.White,
+                fontSize = 23.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+                    .then(Modifier.offset(x = x, y = y)))
+        }
+        Text(selected.name, color = Color.White, fontSize = 13.sp,
+            fontWeight = FontWeight.Bold)
     }
 }
 
