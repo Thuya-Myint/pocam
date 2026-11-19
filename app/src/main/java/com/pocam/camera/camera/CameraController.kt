@@ -18,8 +18,6 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
-import androidx.camera.extensions.ExtensionsManager
-import androidx.camera.extensions.ExtensionMode
 import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
@@ -103,6 +101,11 @@ class CameraController(private val context: Context) {
     fun setVideoQuality(quality: Quality) { requestedVideoQuality = quality }
     fun getVideoQuality(): Quality = requestedVideoQuality
     private var bindGeneration = 0
+    // A photo/Pro/Night/Portrait switch uses the same CameraX pipeline.
+    // Reusing it avoids a full camera stop/start and preview black frames.
+    private var boundFront: Boolean? = null
+    private var boundLensId: String? = null
+    private var boundVideo = false
     fun isRecording(): Boolean = recordingActive
     // Diagnostics remain available to developers, not shown in the viewfinder.
     fun cameraDiagnostics(): String {
@@ -240,6 +243,14 @@ class CameraController(private val context: Context) {
              onReady: () -> Unit = {}, mode: CameraMode = activeMode) {
         focusLocked = false
         activeMode = mode
+        val needsVideo = mode == CameraMode.VIDEO
+        if (camera != null && provider != null && !needsVideo && !boundVideo &&
+            boundFront == front && boundLensId == requestedLensId) {
+            // No extension is enabled for these still modes in v0.5.
+            if (mode == CameraMode.PRO) applyManual()
+            onReady()
+            return
+        }
         val generation = ++bindGeneration
         onCameraReady = onReady
         val future = ProcessCameraProvider.getInstance(context)
@@ -263,48 +274,36 @@ class CameraController(private val context: Context) {
                             Camera2CameraInfo.from(info).cameraId == requestedId
                         }
                     }.build()
-                val extensionMode = when (mode) {
-                    CameraMode.NIGHT -> ExtensionMode.NIGHT
-                    CameraMode.PORTRAIT -> ExtensionMode.BOKEH
-                    else -> ExtensionMode.HDR
+                // v0.5 does not enable OEM extensions. Avoid initializing the
+                // extension manager on each mode switch (expensive on many OEMs).
+                val preview = Preview.Builder().build().also {
+                    it.surfaceProvider = view.surfaceProvider
                 }
-                // Extensions are optional: unsupported devices retain normal CameraX capture.
-                val extensionFuture = ExtensionsManager.getInstanceAsync(context, cameraProvider)
-                extensionFuture.addListener({
-                    try {
-                        if (generation != bindGeneration) return@addListener
-                        val extensions = extensionFuture.get()
-                        // Keep ordinary Photo mode on the stable CameraX pipeline.
-                        // OEM HDR extensions can report success at bind time but fail processing.
-                        val selectedExtension = -1 // OEM extension processing is disabled until device validation
-                        val selector = if (selectedExtension != -1 &&
-                            requestedId == null && extensions.isExtensionAvailable(chosenBase, selectedExtension)) {
-                            extensions.getExtensionEnabledCameraSelector(chosenBase, selectedExtension)
-                        } else chosenBase
-                        val preview = Preview.Builder().build().also {
-                            it.surfaceProvider = view.surfaceProvider
-                        }
-                        recording?.stop()
-                        recording = null
-                        recordingActive = false
-                        cameraProvider.unbindAll()
-                        if (mode == CameraMode.VIDEO) {
-                            val recorder = Recorder.Builder()
-                                .setQualitySelector(QualitySelector.from(requestedVideoQuality, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))).build()
-                            val video = VideoCapture.Builder(recorder)
-                                .setVideoStabilizationEnabled(videoStabilizationEnabled).build()
-                            camera = cameraProvider.bindToLifecycle(owner, selector, preview, video)
-                            videoCapture = video
-                        } else {
-                            videoCapture = null
-                            camera = cameraProvider.bindToLifecycle(owner, selector, preview, capture)
-                        }
-                        provider = cameraProvider
-                        setZoom(zoom)
-                        setTorch(torchEnabled)
-                        if (mode == CameraMode.PRO) applyManual()
-                        onCameraReady?.invoke()
-                    } catch (e: Exception) {
+                recording?.stop()
+                recording = null
+                recordingActive = false
+                cameraProvider.unbindAll()
+                if (needsVideo) {
+                    val recorder = Recorder.Builder()
+                        .setQualitySelector(QualitySelector.from(requestedVideoQuality,
+                            FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))).build()
+                    val video = VideoCapture.Builder(recorder)
+                        .setVideoStabilizationEnabled(videoStabilizationEnabled).build()
+                    camera = cameraProvider.bindToLifecycle(owner, chosenBase, preview, video)
+                    videoCapture = video
+                } else {
+                    videoCapture = null
+                    camera = cameraProvider.bindToLifecycle(owner, chosenBase, preview, capture)
+                }
+                provider = cameraProvider
+                boundFront = front
+                boundLensId = requestedLensId
+                boundVideo = needsVideo
+                setZoom(zoom)
+                setTorch(torchEnabled)
+                if (mode == CameraMode.PRO) applyManual()
+                onCameraReady?.invoke()
+            } catch (e: Exception) {
                         Log.e("PocamCamera", "Camera binding failed", e)
                         onError(e.message ?: "Unable to configure camera")
                     }
