@@ -159,6 +159,8 @@ fun ViewfinderSettings(
                                     }
                                 }
                             }
+                            // Give the resolution choices breathing room before the next setting.
+                            Spacer(Modifier.height(14.dp))
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.Videocam,"Video stabilization",
                                 "Request smoother video where supported",
