@@ -49,11 +49,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 @Composable
 private fun cameraAccent(): Color {
-    val context = LocalContext.current
-    return remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
-        else Color(0xFFFFD88C)
-    }
+    return PocamPalette.Orange
 }
 
 @Composable

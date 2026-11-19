@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -37,7 +38,7 @@ fun ShutterButton(
 
     Box(
         Modifier.size(88.dp)
-            .border(3.dp, Color.White, CircleShape)
+            .border(3.dp, PocamPalette.Orange.copy(alpha=.95f), CircleShape)
             .background(Color(0xFF202126), CircleShape)
             .semantics {
                 contentDescription = if (recording) "Stop recording"
@@ -54,7 +55,8 @@ fun ShutterButton(
         Box(
             Modifier.size(if (recording) 40.dp else 70.dp)
                 .background(
-                    if (recording) Color(0xFFFF5555) else Color.White,
+                    if (recording) Brush.linearGradient(listOf(Color(0xFFE43A1D),PocamPalette.Orange))
+                    else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF6F6F6))),
                     if (recording) RoundedCornerShape(12.dp) else CircleShape
                 )
         )

@@ -130,17 +130,17 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pocam.camera.camera.CameraController
 import com.pocam.camera.domain.model.CameraMode
 import com.pocam.camera.ui.components.ShutterButton
-import com.pocam.camera.ui.components.ManualControls
+import com.pocam.camera.ui.components.ProUiState
+import com.pocam.camera.ui.components.ProControlRail
+import com.pocam.camera.ui.components.ProParameterTray
+import com.pocam.camera.ui.components.PocamPalette
 import com.pocam.camera.ui.components.PhotoEditor
 
 @Composable
 fun CameraScreen() {
     val context = LocalContext.current
-    val accent = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            dynamicDarkColorScheme(context).primary
-        } else Color(0xFFFFD88C)
-    }
+    val accent = PocamPalette.Orange
+    val proState = remember { ProUiState() }
     val owner = LocalLifecycleOwner.current
     val tones = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 75) }
     var lastSoundAt by remember { mutableStateOf(0L) }
@@ -227,12 +227,6 @@ fun CameraScreen() {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val availableHeight = maxHeight
-        // Pro tools occupy a compact scrollable panel ABOVE the zoom ruler and
-        // mode selector. Reserve the top safe area for the camera header.
-        val proPanelBottom = if (!controller.isFrontCamera() && controller.rearLenses.size > 1)
-            510.dp else 465.dp
-        val proMaxHeight = (availableHeight - proPanelBottom - 140.dp)
-            .coerceAtLeast(96.dp).coerceAtMost(290.dp)
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -323,7 +317,7 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(Color(0xA8111319), RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
+                .background(Color(0xD10C0F15), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -386,7 +380,7 @@ fun CameraScreen() {
                                 focusPoint = focusLockPoint
                             }
                         }, verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(44.dp).background(Color(0xFF30333B), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp).background(PocamPalette.Graphite, CircleShape), contentAlignment = Alignment.Center) {
                                 Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
                                     contentDescription = null, tint = accent)
                             }
@@ -397,7 +391,7 @@ fun CameraScreen() {
                             crosshairEnabled = !crosshairEnabled
                             preferences.edit().putBoolean("crosshair", crosshairEnabled).apply()
                         }, verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(44.dp).background(Color(0xFF30333B), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp).background(PocamPalette.Graphite, CircleShape), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
                             }
                             Spacer(Modifier.width(12.dp))
@@ -426,7 +420,7 @@ fun CameraScreen() {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             listOf(0, 3, 5, 10).forEach { seconds ->
                                 Box(Modifier.size(56.dp).background(
-                                    if (timerSeconds == seconds) accent else Color(0xFF41434C),
+                                    if (timerSeconds == seconds) accent else PocamPalette.Graphite,
                                     CircleShape).clickable {
                                         timerSeconds = seconds
                                         preferences.edit().putInt("timer", seconds).apply()
@@ -448,7 +442,7 @@ fun CameraScreen() {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
-            if (mode == CameraMode.PRO) {
+            if (false && mode == CameraMode.PRO) {
                 Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                     .padding(top = 108.dp, end = 18.dp)
                     .background(Color(0x88303842), CircleShape)) {
@@ -465,7 +459,7 @@ fun CameraScreen() {
             exit = slideOutVertically(animationSpec = tween(150), targetOffsetY = { it / 8 }) + fadeOut(tween(130)),
             modifier = Modifier.fillMaxSize().zIndex(30f)) {
             Column(Modifier.fillMaxSize()
-                .background(Color(0xFF111319))
+                .background(PocamPalette.Carbon)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -504,7 +498,7 @@ fun CameraScreen() {
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
         if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .navigationBarsPadding().padding(bottom = 310.dp, start = 22.dp, end = 22.dp)) {
+                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 355.dp else 295.dp, start = 22.dp, end = 22.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -547,44 +541,45 @@ fun CameraScreen() {
             }
             }
         }
-        AnimatedVisibility(mode == CameraMode.PRO && showProPanel && !showSettings,
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(11f)
+        // Compact right-side rail: live camera preview remains visible.
+        if (mode == CameraMode.PRO && !showSettings && editPhoto == null) {
+            ProControlRail(
+                state = proState,
+                controller = controller,
+                cameraGeneration = cameraGeneration,
+                exposureIndex = exposureIndex,
+                exposureStepEv = controller.exposureStepEv(),
+                expanded = showProPanel,
+                onExpanded = { showProPanel = it },
+                modifier = Modifier.align(Alignment.TopEnd).zIndex(14f)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(top = 118.dp, end = 14.dp)
+            )
+        }
+        AnimatedVisibility(
+            visible = mode == CameraMode.PRO && showProPanel && !showSettings && editPhoto == null,
+            enter = fadeIn(tween(150)) + slideInVertically(tween(190)) { it / 5 },
+            exit = fadeOut(tween(110)) + slideOutVertically(tween(150)) { it / 5 },
+            modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
                 .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, bottom = proPanelBottom),
-            enter = fadeIn(tween(220)) + slideInVertically { it / 3 },
-            exit = fadeOut(tween(180)) + slideOutVertically { it / 3 }) {
-            Column(Modifier.fillMaxWidth().heightIn(max = proMaxHeight)
-                .shadow(12.dp, RoundedCornerShape(24.dp))
-                .background(Color(0xE520222A), RoundedCornerShape(24.dp))
-                .verticalScroll(rememberScrollState())
-                .padding(12.dp)) {
-                Row(Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Text("MANUAL STUDIO  ·  PRO", color = accent,
-                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 12.sp)
-                    IconButton(onClick = { showProPanel = false }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close Pro controls",
-                            tint = Color.White)
-                    }
-                }
-                ManualControls(
-                    controller = controller,
-                    cameraGeneration = cameraGeneration,
-                    exposureIndex = exposureIndex,
-                    exposureRange = exposureRange,
-                    exposureStepEv = controller.exposureStepEv(),
-                    onExposure = { value ->
-                        exposureIndex = value
-                        controller.setExposure(value)
-                    }
-                )
-            }
+                .padding(start = 16.dp, end = 16.dp, bottom = 140.dp)
+        ) {
+            ProParameterTray(
+                state = proState,
+                controller = controller,
+                cameraGeneration = cameraGeneration,
+                exposureIndex = exposureIndex,
+                exposureRange = exposureRange,
+                exposureStepEv = controller.exposureStepEv(),
+                onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
+                onCollapse = { showProPanel = false },
+                modifier = Modifier.heightIn(max = 180.dp)
+            )
         }
 
         // A single renderer owns the background, curve, selected pill and labels.
         // This avoids overlap and ensures the highlight follows the exact same arc.
-        if (!showSettings && editPhoto == null) {
+        if (!showSettings && editPhoto == null && !(mode == CameraMode.PRO && showProPanel)) {
             CurvedModeSelector(
                 selected = mode,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
@@ -597,7 +592,8 @@ fun CameraScreen() {
                         mode = candidate
                         focusLocked = false
                         focusLockPoint = null
-                        showProPanel = candidate == CameraMode.PRO
+                        showProPanel = false
+                        proState.reset()
                         showMore = false
                         previewView?.let { view ->
                             controller.bind(owner, view, { error = it }, {

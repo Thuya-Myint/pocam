@@ -46,11 +46,7 @@ fun CurvedModeSelector(
     onSelect: (CameraMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val accent = remember(context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            dynamicDarkColorScheme(context).primary else Color(0xFFFFD88C)
-    }
+    val accent = PocamPalette.Orange
     val modes = remember {
         listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
             CameraMode.PRO, CameraMode.PORTRAIT)
