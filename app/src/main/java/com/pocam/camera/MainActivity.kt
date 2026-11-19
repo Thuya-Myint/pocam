@@ -13,9 +13,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Keep system bars visible. The camera preview can still draw edge-to-edge,
+        // but Compose needs real status/cutout insets to position the header safely.
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            show(WindowInsetsCompat.Type.systemBars())
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
         setContent { PocamTheme { CameraScreen() } }
     }

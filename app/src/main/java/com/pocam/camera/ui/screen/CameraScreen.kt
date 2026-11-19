@@ -7,6 +7,10 @@ import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.BoxScope
@@ -314,7 +318,7 @@ fun CameraScreen() {
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
                 .background(Color(0xA8111319), RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
-                .statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
@@ -432,14 +436,14 @@ fun CameraScreen() {
                     }
                 }
             }
-            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding()
+            Box(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .padding(top = 166.dp).background(Color(0x77303842), CircleShape)
                 .padding(horizontal = 13.dp, vertical = 5.dp)) {
                 Text(mode.name, color = accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             if (mode == CameraMode.PRO) {
-                Box(Modifier.align(Alignment.TopEnd).statusBarsPadding()
+                Box(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                     .padding(top = 108.dp, end = 18.dp)
                     .background(Color(0x88303842), CircleShape)) {
                     IconButton(onClick = { showProPanel = !showProPanel }) {
@@ -456,7 +460,7 @@ fun CameraScreen() {
             modifier = Modifier.fillMaxSize().zIndex(30f)) {
             Column(Modifier.fillMaxSize()
                 .background(Color(0xFF111319))
-                .statusBarsPadding().navigationBarsPadding()) {
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp)) {
             ViewfinderSettings(

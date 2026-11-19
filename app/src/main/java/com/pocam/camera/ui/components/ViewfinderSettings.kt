@@ -85,6 +85,9 @@ fun ViewfinderSettings(
         }, label = "settings-section") { section ->
         when (section) {
             "Capture" -> {
+                // AnimatedContent lays out a single content root. Stack the capture
+                // section and timer vertically instead of overlaying them.
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 SettingsGroup("Capture", Icons.Rounded.PhotoLibrary, accent) {
                     SettingsChoice(Icons.Rounded.PhotoLibrary, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
                     SettingsChoice(Icons.Rounded.PhotoLibrary, "Image format", imageFormat) { dialog = "Image format" }
@@ -103,6 +106,7 @@ fun ViewfinderSettings(
                             }
                         }
                     }
+                }
                 }
             }
             "Camera" -> SettingsGroup("Camera", Icons.Rounded.Tune, accent) {
