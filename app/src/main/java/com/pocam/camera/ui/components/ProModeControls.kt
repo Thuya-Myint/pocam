@@ -41,12 +41,16 @@ import java.util.Locale
 class ProUiState {
     var selected by mutableStateOf("ISO")
     var isoFraction by mutableFloatStateOf(0f)
+    var isoAuto by mutableStateOf(true)
     var shutterFraction by mutableFloatStateOf(0f)
+    var shutterAuto by mutableStateOf(true)
     var focusFraction by mutableFloatStateOf(0f)
+    var focusAuto by mutableStateOf(true)
     var whiteBalance by mutableIntStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO)
     fun reset() {
         isoFraction = 0f; shutterFraction = 0f; focusFraction = 0f
         whiteBalance = CaptureRequest.CONTROL_AWB_MODE_AUTO
+        isoAuto = true; shutterAuto = true; focusAuto = true
         selected = "ISO"
     }
 }
@@ -62,9 +66,9 @@ fun ProControlRail(
     val isoRange = caps?.isoRange
     val expRange = caps?.exposureRangeNs
     val labels = listOf(
-        "ISO" to (if (state.isoFraction == 0f || isoRange == null) "AUTO"
+        "ISO" to (if (state.isoAuto || isoRange == null) "AUTO"
             else isoAt(isoRange, state.isoFraction).toString()),
-        "S" to (if (state.shutterFraction == 0f || expRange == null) "AUTO"
+        "S" to (if (state.shutterAuto || expRange == null) "AUTO"
             else shutterLabel(shutterAt(expRange, state.shutterFraction))),
         "WB" to when (state.whiteBalance) {
             CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT -> "DAY"
@@ -72,7 +76,7 @@ fun ProControlRail(
             CaptureRequest.CONTROL_AWB_MODE_INCANDESCENT -> "TUNG"
             else -> "AUTO"
         },
-        "FOCUS" to (if (state.focusFraction == 0f) "AF" else "MF"),
+        "FOCUS" to (if (state.focusAuto) "AF" else "MF"),
         "EV" to String.format(Locale.US, "%+.1f", exposureIndex * exposureStepEv)
     )
     Column(
@@ -155,24 +159,26 @@ fun ProParameterTray(
                     NotSupported("Manual ISO not available for this lens")
                 } else {
                     val value = isoAt(range, state.isoFraction)
-                    Text(if (state.isoFraction == 0f) "ISO · AUTO" else "ISO · $value",
+                    Text(if (state.isoAuto) "ISO · AUTO" else "ISO · $value",
                         color = PocamPalette.OrangeSoft, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     StraightRuler(
                         value=state.isoFraction, valueRange=0f..1f,
-                        label=if (state.isoFraction == 0f) "AUTO" else "$value",
+                        label=if (state.isoAuto) "AUTO" else "$value",
                         onValueChange={ fraction ->
                             state.isoFraction = fraction
-                            controller.setManualIso(if(fraction == 0f) null else isoAt(range, fraction))
+                            state.isoAuto = false
+                            controller.setManualIso(isoAt(range, fraction))
                         }
                     )
                     PresetRow(
                         listOf("AUTO", "100", "200", "400", "800"),
-                        active=if(state.isoFraction==0f) "AUTO" else value.toString()
+                        active=if(state.isoAuto) "AUTO" else value.toString()
                     ) { preset ->
                         if(preset=="AUTO") {
-                            state.isoFraction=0f; controller.setManualIso(null)
+                            state.isoFraction=0f; state.isoAuto=true; controller.setManualIso(null)
                         } else {
                             val iso=preset.toInt().coerceIn(range)
+                            state.isoAuto=false
                             state.isoFraction=(iso-range.first).toFloat()/
                                 (range.last-range.first).coerceAtLeast(1)
                             controller.setManualIso(iso)
@@ -185,23 +191,25 @@ fun ProParameterTray(
                 if(range==null) NotSupported("Manual shutter speed not available for this lens")
                 else {
                     val ns=shutterAt(range,state.shutterFraction)
-                    Text(if(state.shutterFraction==0f) "SHUTTER · AUTO"
+                    Text(if(state.shutterAuto) "SHUTTER · AUTO"
                         else "SHUTTER · ${shutterLabel(ns)}",
                         color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
                     StraightRuler(
                         value=state.shutterFraction,valueRange=0f..1f,
-                        label=if(state.shutterFraction==0f) "AUTO" else shutterLabel(ns),
+                        label=if(state.shutterAuto) "AUTO" else shutterLabel(ns),
                         onValueChange={ f ->
                             state.shutterFraction=f
-                            controller.setManualExposureNs(if(f==0f) null else shutterAt(range,f))
+                            state.shutterAuto=false
+                            controller.setManualExposureNs(shutterAt(range,f))
                         })
                     PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
-                        active=if(state.shutterFraction==0f) "AUTO" else shutterLabel(ns)) { preset ->
-                        if(preset=="AUTO") { state.shutterFraction=0f; controller.setManualExposureNs(null) }
+                        active=if(state.shutterAuto) "AUTO" else shutterLabel(ns)) { preset ->
+                        if(preset=="AUTO") { state.shutterFraction=0f; state.shutterAuto=true; controller.setManualExposureNs(null) }
                         else {
                             val denominator=preset.substringAfter("/").toInt()
                             val target=(1_000_000_000L/denominator).coerceIn(range)
                             state.shutterFraction=fractionAt(range,target)
+                            state.shutterAuto=false
                             controller.setManualExposureNs(target)
                         }
                     }
@@ -227,13 +235,14 @@ fun ProParameterTray(
                 val distance=caps?.minFocusDistance ?: 0f
                 if(distance<=0f) NotSupported("Manual focus not available for this lens")
                 else {
-                    Text(if(state.focusFraction==0f) "FOCUS · AUTO"
+                    Text(if(state.focusAuto) "FOCUS · AUTO"
                          else String.format(Locale.US,"FOCUS · %.2f D",distance*state.focusFraction),
                         color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
                     StraightRuler(state.focusFraction,0f..1f,
                         { f -> state.focusFraction=f
-                            controller.setManualFocus(if(f==0f) null else f*distance)
-                        },if(state.focusFraction==0f) "AF" else "MF")
+                            state.focusAuto=false
+                            controller.setManualFocus(f*distance)
+                        },if(state.focusAuto) "AF" else "MF")
                 }
             }
             "EV" -> {
