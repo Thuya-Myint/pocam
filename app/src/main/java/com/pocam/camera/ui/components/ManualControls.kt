@@ -17,6 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -55,17 +61,30 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
         focusFraction = 0f
     }
     var wb by remember { mutableStateOf(CaptureRequest.CONTROL_AWB_MODE_AUTO) }
+    var activeControl by remember { mutableStateOf("ISO") }
 
     Column(modifier.fillMaxWidth()
-        .background(Color(0xFF292D36), RoundedCornerShape(20.dp))
+        .background(Color(0xD91B1D26), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
         .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("EXPOSURE  /  FOCUS  /  COLOR", color = accent,
+        Text("MANUAL STUDIO  •  PRO", color = accent,
             fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Button(onClick = { caps = controller.manualCapabilities() },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
                 contentColor = Color.White)) {
             Text(if (caps == null) "Detect camera controls" else "Refresh sensor capabilities")
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("ISO", "SHUTTER", "WB", "EV", "FOCUS").forEach { control ->
+                val selected = activeControl == control
+                Box(Modifier.weight(1f)
+                    .background(if (selected) accent else Color(0xAA363943), CircleShape)
+                    .clickable { activeControl = control }
+                    .padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                    Text(control, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        color = if (selected) Color.Black else Color.White)
+                }
+            }
         }
         val current = caps
         if (current != null) {
@@ -74,11 +93,13 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
             if (isoRange != null && exposureRange != null) {
                 val isoValue = (isoRange.first + (isoRange.last - isoRange.first) *
                     isoFraction).roundToInt().coerceIn(isoRange)
-                Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
+                if (activeControl == "ISO") { Text(if (isoFraction == 0f) "ISO: AUTO" else "ISO: $isoValue", color = Color.White)
                 StraightRuler(value = isoFraction, valueRange = 0f..1f, label = if (isoFraction == 0f) "AUTO" else "$isoValue", onValueChange = {
                     isoFraction = it
                     controller.setManualIso(if (it == 0f) null else isoValueFor(isoRange, it))
                 })
+                }
+                if (activeControl == "SHUTTER") {
                 val minNs = exposureRange.first.coerceAtLeast(1L)
                 val maxNs = exposureRange.last.coerceAtMost(1_000_000_000L).coerceAtLeast(minNs)
                 val selectedNs = shutterNs(minNs, maxNs, shutterFraction)
@@ -92,8 +113,9 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                 })
                 Text("ISO/shutter AUTO uses a manual baseline when the other is fixed",
                     color = Color.LightGray)
+                }
             } else Text("Manual ISO/shutter unavailable", color = Color.LightGray)
-            if (current.minFocusDistance > 0f) {
+            if (activeControl == "FOCUS" && current.minFocusDistance > 0f) {
                 Text(if (focusFraction == 0f) "Focus: AUTO"
                     else "Focus: ${"%.2f".format(focusFraction * current.minFocusDistance)} D",
                     color = Color.White)
@@ -102,7 +124,8 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                     controller.setManualFocus(if (it == 0f) null else
                         it * current.minFocusDistance)
                 })
-            } else Text("Manual focus unavailable", color = Color.LightGray)
+            } else if (activeControl == "FOCUS") Text("Manual focus unavailable", color = Color.LightGray)
+            if (activeControl == "WB") {
             Text("White balance", color = Color.White)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf("Auto" to CaptureRequest.CONTROL_AWB_MODE_AUTO,
@@ -116,6 +139,7 @@ fun ManualControls(controller: CameraController, cameraGeneration: Int, modifier
                                 .clickable { wb = value; controller.setWhiteBalance(value) }
                                 .padding(horizontal = 12.dp, vertical = 8.dp))
                     }
+            }
             }
             Button(colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424958),
                 contentColor = Color.White), onClick = {
