@@ -645,7 +645,7 @@ fun CameraScreen() {
                 selected = mode,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
                     .navigationBarsPadding()
-                    .padding(start = 9.dp, end = 9.dp, bottom = 133.dp),
+                    .padding(start = 9.dp, end = 9.dp, bottom = 122.dp),
                 onSelect = { candidate ->
                     if (candidate != mode && !captureBusy && !recordingVideo) {
                         previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
