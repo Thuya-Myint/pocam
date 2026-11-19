@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 @Composable
 private fun cameraAccent(): Color {
@@ -84,9 +86,11 @@ fun ZoomRail(
     onTick: () -> Unit = {}, modifier: Modifier = Modifier
 ) {
     val accent = cameraAccent()
+    val haptics = LocalHapticFeedback.current
     val safeMax = maxZoom.coerceAtLeast(1.01f)
     val latestSelect by rememberUpdatedState(onSelect)
     val latestTick by rememberUpdatedState(onTick)
+    val latestHaptics by rememberUpdatedState(haptics)
     val latestMax by rememberUpdatedState(safeMax)
     var lastTick by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val fraction = ((selected - 1f) / (safeMax - 1f)).coerceIn(0f, 1f)
@@ -100,18 +104,23 @@ fun ZoomRail(
             color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.background(Color(0xD91B1F28), RoundedCornerShape(20.dp))
                 .padding(horizontal = 18.dp, vertical = 5.dp))
-        Box(Modifier.width(310.dp).height(94.dp)
+        Box(Modifier.fillMaxWidth().height(104.dp)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     fun update(x: Float) {
-                        val normalized = (x / size.width).coerceIn(0f, 1f)
-                        val tick = (normalized * 48).toInt()
+                        // Snap both endpoints with generous hit targets; 1× is always reachable.
+                        val edge = 22.dp.toPx()
+                        val normalized = ((x - edge) / (size.width - edge * 2f).coerceAtLeast(1f))
+                            .coerceIn(0f, 1f)
+                        val tick = (normalized * 100).toInt()
                         if (tick != lastTick) {
                             lastTick = tick
-                            latestTick()
+                            latestHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         }
-                        latestSelect(1f + normalized * (latestMax - 1f))
+                        val next = if (normalized < .012f) 1f
+                            else 1f + normalized * (latestMax - 1f)
+                        latestSelect(next)
                     }
                     update(down.position.x)
                     do {
@@ -126,11 +135,11 @@ fun ZoomRail(
             }, contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val cx = size.width / 2f
-                val radius = size.width * .49f
+                val radius = size.width * .48f
                 val cy = size.height + radius * .34f
-                for (i in 0..48) {
-                    val theta = Math.toRadians((198f + 144f * i / 48f).toDouble())
-                    val major = i % 8 == 0
+                for (i in 0..100) {
+                    val theta = Math.toRadians((198f + 144f * i / 100f).toDouble())
+                    val major = i % 10 == 0
                     val r1 = radius - if (major) 24.dp.toPx() else 17.dp.toPx()
                     val r2 = radius - 7.dp.toPx()
                     val x1 = cx + r1 * kotlin.math.cos(theta).toFloat()
@@ -138,10 +147,10 @@ fun ZoomRail(
                     val x2 = cx + r2 * kotlin.math.cos(theta).toFloat()
                     val y2 = cy + r2 * kotlin.math.sin(theta).toFloat()
                     // Feather the outer edges rather than clipping or hiding ticks.
-                    val edge = kotlin.math.min(i, 48 - i) / 9f
+                    val edge = kotlin.math.min(i, 100 - i) / 16f
                     val opacity = (edge.coerceIn(0f, 1f) * edge.coerceIn(0f, 1f) * (3f - 2f * edge.coerceIn(0f, 1f)))
                         .coerceAtLeast(.05f)
-                    drawLine(if (i / 48f <= animated) accent.copy(alpha = opacity)
+                    drawLine(if (i / 100f <= animated) accent.copy(alpha = opacity)
                         else Color.White.copy(alpha = .52f * opacity),
                         Offset(x1, y1), Offset(x2, y2),
                         if (major) 2.dp.toPx() else 1.dp.toPx())

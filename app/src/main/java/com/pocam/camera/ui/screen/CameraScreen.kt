@@ -357,7 +357,7 @@ fun CameraScreen() {
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
         if (!wheelOpen && !showProPanel && !showSettings) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 132.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 166.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -437,7 +437,7 @@ fun CameraScreen() {
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 22.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 60.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp)
