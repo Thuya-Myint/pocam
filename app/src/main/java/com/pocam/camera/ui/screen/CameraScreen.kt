@@ -1,6 +1,15 @@
 package com.pocam.camera.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
@@ -165,6 +174,8 @@ fun CameraScreen() {
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
+    var focusLocked by remember { mutableStateOf(false) }
     var wheelOpen by remember { mutableStateOf(false) }
     var wheelHover by remember { mutableStateOf(CameraMode.PHOTO) }
     var captureFlash by remember { mutableStateOf(false) }
@@ -220,7 +231,7 @@ fun CameraScreen() {
                     })
                     setOnTouchListener { view, event ->
                         if (event.action == MotionEvent.ACTION_UP) {
-                            controller.focusAt(this, event.x, event.y)
+                            if (!focusLocked) controller.focusAt(this, event.x, event.y)
                             focusPoint = Pair(
                                 (event.x / width.coerceAtLeast(1)).coerceIn(0f, 1f),
                                 (event.y / height.coerceAtLeast(1)).coerceIn(0f, 1f))
@@ -265,14 +276,25 @@ fun CameraScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("pocam.", color = Color.White, fontSize = 23.sp,
-                    fontWeight = FontWeight.Bold)
-                Text("POCKET CAMERA", color = Color.White.copy(alpha = .76f),
-                    fontSize = 8.sp, letterSpacing = 1.6.sp)
+                Text("CAMERA", color = Color.White.copy(alpha = .9f), fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
             }
             if (!wheelOpen) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        IconButton(onClick = {
+                            previewView?.let { view ->
+                                if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
+                                focusLocked = controller.isFocusLocked()
+                            }
+                        }) {
+                            Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                                contentDescription = if (focusLocked) "Unlock focus" else "Lock focus",
+                                tint = if (focusLocked) accent else Color.White)
+                        }
+                    }
                     Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
                         contentAlignment = Alignment.Center) {
                         IconButton(onClick = {
@@ -297,7 +319,15 @@ fun CameraScreen() {
                     }
                     Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
                         contentAlignment = Alignment.Center) {
-                        IconButton(onClick = { showSettings = !showSettings }) {
+                        IconButton(onClick = { showMore = !showMore; showSettings = false }) {
+                            Icon(if (showMore) Icons.Rounded.Close else Icons.Rounded.MoreHoriz,
+                                contentDescription = "More camera controls",
+                                tint = if (showMore) accent else Color.White)
+                        }
+                    }
+                    Box(Modifier.size(44.dp).background(Color(0x88303842), CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        IconButton(onClick = { showSettings = !showSettings; showMore = false }) {
                             Icon(Icons.Rounded.Tune, contentDescription = "Camera settings",
                                 tint = if (showSettings) accent else Color.White)
                         }
@@ -319,6 +349,45 @@ fun CameraScreen() {
                         Icon(if (showProPanel) Icons.Rounded.Close else Icons.Rounded.Tune,
                             contentDescription = "Pro controls", tint = accent)
                     }
+                }
+            }
+        }
+        AnimatedVisibility(showMore && !wheelOpen && editPhoto == null,
+            modifier = Modifier.align(Alignment.TopEnd).zIndex(16f)
+                .statusBarsPadding().padding(top = 100.dp, end = 18.dp),
+            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+            exit = fadeOut(tween(150)) + shrinkVertically(tween(200))) {
+            Column(Modifier.width(220.dp)
+                .shadow(12.dp, RoundedCornerShape(22.dp))
+                .background(Color(0xEE20242C), RoundedCornerShape(22.dp))
+                .padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("QUICK CONTROLS", color = accent, fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Row(Modifier.fillMaxWidth().clickable {
+                    previewView?.let { view ->
+                        if (focusLocked) controller.unlockFocus() else controller.lockFocus(view)
+                        focusLocked = controller.isFocusLocked()
+                    }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (focusLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                        contentDescription = null, tint = accent)
+                    Spacer(Modifier.width(12.dp))
+                    Text(if (focusLocked) "Unlock focus" else "Lock focus", color = Color.White)
+                }
+                Row(Modifier.fillMaxWidth().clickable {
+                    gridEnabled = !gridEnabled
+                    preferences.edit().putBoolean("grid", gridEnabled).apply()
+                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.GridOn, contentDescription = null, tint = accent)
+                    Spacer(Modifier.width(12.dp))
+                    Text(if (gridEnabled) "Hide grid" else "Show grid", color = Color.White)
+                }
+                Row(Modifier.fillMaxWidth().clickable {
+                    showMore = false
+                    showSettings = true
+                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Tune, contentDescription = null, tint = accent)
+                    Spacer(Modifier.width(12.dp))
+                    Text("All settings", color = Color.White)
                 }
             }
         }
@@ -359,9 +428,9 @@ fun CameraScreen() {
             }
         }
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
-        if (!wheelOpen && !showProPanel && !showSettings) {
+        if (!wheelOpen && !showProPanel && !showSettings && !showMore && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 245.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 204.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -441,7 +510,7 @@ fun CameraScreen() {
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .padding(start = 10.dp, end = 10.dp, top = 12.dp, bottom = 60.dp),
+            .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(52.dp)
@@ -488,9 +557,10 @@ fun CameraScreen() {
             // Fixed shutter position: wheel and shutter always share one center.
             // Align the wheel's bottom edge with the user's marked guide (~34dp below prior position).
             // Do not animate or move the shutter on long press.
-            Box(Modifier.size(88.dp).offset(y = (-72).dp),
+            Box(Modifier.size(88.dp).offset(y = (-70).dp),
                 contentAlignment = Alignment.Center) {
-                if (wheelOpen) {
+                AnimatedVisibility(wheelOpen, enter = fadeIn(tween(160)) + scaleIn(tween(200)),
+                    exit = fadeOut(tween(130)) + scaleOut(tween(160))) {
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
                 }
                 ShutterButton(mode = mode, busy = captureBusy, recording = recordingVideo,
@@ -540,6 +610,8 @@ fun CameraScreen() {
                             showProPanel = false
                         }
                         mode = it
+                        focusLocked = false
+                        showMore = false
                         showProPanel = it == CameraMode.PRO
                         showSettings = false
                         exposureRange = controller.exposureRange()
@@ -576,6 +648,7 @@ fun CameraScreen() {
                             maxZoom = controller.maxZoom()
                         }
                         zoom = 1f
+                        focusLocked = false
                         torchEnabled = false
                     }
                 }, contentAlignment = Alignment.Center) {
@@ -612,13 +685,15 @@ fun CameraScreen() {
             }
         }
         editPhoto?.let { uri ->
+            Box(Modifier.fillMaxSize().zIndex(100f)) {
             PhotoEditor(uri = uri, onClose = { editPhoto = null }, onSaved = {
                 rememberMedia(it)
                 editPhoto = null
                 Toast.makeText(context, "Edited photo saved", Toast.LENGTH_SHORT).show()
             }, onError = { error = it })
+            }
         }
-        error?.let {
+        if (editPhoto == null) error?.let {
             Text(it, color = Color.White, modifier = Modifier.align(Alignment.Center)
                 .background(Color(0xCC550000), RoundedCornerShape(12.dp))
                 .clickable { error = null }.padding(12.dp))

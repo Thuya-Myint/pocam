@@ -205,6 +205,7 @@ class CameraController(private val context: Context) {
 
     fun bind(owner: LifecycleOwner, view: PreviewView, onError: (String) -> Unit,
              onReady: () -> Unit = {}, mode: CameraMode = activeMode) {
+        focusLocked = false
         activeMode = mode
         val generation = ++bindGeneration
         onCameraReady = onReady
@@ -361,7 +362,27 @@ class CameraController(private val context: Context) {
         camera?.cameraControl?.setExposureCompensationIndex(index.coerceIn(range.first, range.last))
     }
 
+    private var focusLocked = false
+    fun isFocusLocked(): Boolean = focusLocked
+
+    fun lockFocus(view: PreviewView) {
+        val activeCamera = camera ?: return
+        if (activeMode == CameraMode.PRO && manualFocusDiopters != null) return
+        val point = view.meteringPointFactory.createPoint(view.width / 2f, view.height / 2f)
+        val action = FocusMeteringAction.Builder(point,
+            FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+            .disableAutoCancel().build()
+        activeCamera.cameraControl.startFocusAndMetering(action)
+        focusLocked = true
+    }
+
+    fun unlockFocus() {
+        focusLocked = false
+        camera?.cameraControl?.cancelFocusAndMetering()
+    }
+
     fun focusAt(view: PreviewView, x: Float, y: Float) {
+        if (focusLocked) return
         if (activeMode == CameraMode.PRO && manualFocusDiopters != null) return
         val point = view.meteringPointFactory.createPoint(x, y)
         val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
@@ -372,6 +393,7 @@ class CameraController(private val context: Context) {
     // Request a center autofocus pass before capture, but do not block shooting
     // if the device reports unsupported AF or the focus future fails.
     fun focusThenTakePhoto(onSaved: (Uri) -> Unit, onError: (String) -> Unit) {
+        if (focusLocked) { takePhoto(onSaved, onError); return }
         // Pro manual focus must not be overridden by a temporary AF request.
         if (activeMode == CameraMode.PRO && manualFocusDiopters != null) {
             takePhoto(onSaved, onError)
