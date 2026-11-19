@@ -560,7 +560,7 @@ fun CameraScreen() {
             // Do not animate or move the shutter on long press.
             Box(Modifier.size(88.dp).offset(y = (-70).dp),
                 contentAlignment = Alignment.Center) {
-                AnimatedVisibility(wheelOpen, enter = fadeIn(tween(160)) + scaleIn(tween(200)),
+                androidx.compose.animation.AnimatedVisibility(visible = wheelOpen, enter = fadeIn(tween(160)) + scaleIn(tween(200)),
                     exit = fadeOut(tween(130)) + scaleOut(tween(160))) {
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
                 }
