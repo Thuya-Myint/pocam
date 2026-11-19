@@ -2,6 +2,9 @@ package com.pocam.camera.ui.components
 
 import android.os.Build
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val surface = Color(0xE622252D)
+private val surface = Color(0xC622252D)
 
 @Composable
 fun ViewfinderSettings(
@@ -77,6 +80,9 @@ fun ViewfinderSettings(
                 }
             }
         }
+        AnimatedContent(targetState = section, transitionSpec = {
+            androidx.compose.animation.fadeIn(tween(160)) togetherWith androidx.compose.animation.fadeOut(tween(110))
+        }, label = "settings-section") { section ->
         when (section) {
             "Capture" -> {
                 SettingsGroup("Capture", Icons.Rounded.PhotoLibrary, accent) {
@@ -121,6 +127,7 @@ fun ViewfinderSettings(
                 }
             }
         }
+    }
     }
     dialog?.let { target ->
         val options = when (target) {
