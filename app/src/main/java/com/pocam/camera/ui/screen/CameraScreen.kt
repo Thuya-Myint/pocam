@@ -361,7 +361,7 @@ fun CameraScreen() {
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
         if (!wheelOpen && !showProPanel && !showSettings) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .padding(bottom = 166.dp, start = 8.dp, end = 8.dp)) {
+                .padding(bottom = 245.dp, start = 8.dp, end = 8.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -486,9 +486,9 @@ fun CameraScreen() {
                 }
             }
             // Fixed shutter position: wheel and shutter always share one center.
-            // Keep 40dp clearance below the 300dp wheel when it is shown.
+            // Keep approximately 20dp clearance below the 300dp wheel when it is shown.
             // Do not animate or move the shutter on long press.
-            Box(Modifier.size(88.dp).offset(y = (-86).dp),
+            Box(Modifier.size(88.dp).offset(y = (-106).dp),
                 contentAlignment = Alignment.Center) {
                 if (wheelOpen) {
                     RadialModeWheel(wheelHover, Modifier.zIndex(1f))
