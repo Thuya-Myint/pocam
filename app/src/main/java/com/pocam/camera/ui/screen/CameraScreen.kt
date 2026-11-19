@@ -234,7 +234,9 @@ fun CameraScreen() {
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    // SurfaceView-first for lower GPU cost and faster preview frames.
+                    // CameraX falls back automatically when the device requires it.
+                    implementationMode = PreviewView.ImplementationMode.PERFORMANCE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
                     controller.bind(owner, this, { error = it }, onReady = {
@@ -569,7 +571,8 @@ fun CameraScreen() {
                 onExpanded = { showProPanel = it },
                 modifier = Modifier.align(Alignment.TopEnd).zIndex(14f)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = 118.dp, end = 14.dp)
+                    // Expanded quick settings should never cover the Pro controls.
+                    .padding(top = if (showMore) 242.dp else 118.dp, end = 14.dp)
             )
         }
         AnimatedVisibility(
@@ -648,13 +651,24 @@ fun CameraScreen() {
                     value = withContext(Dispatchers.IO) {
                         lastPhoto?.let { uri ->
                             try {
+                                // Decode near thumbnail size instead of allocating a
+                                // full-resolution photo (which causes GC stalls/OOM).
+                                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                                 context.contentResolver.openInputStream(uri)?.use { stream ->
-                                    BitmapFactory.decodeStream(stream)?.let { bitmap ->
-                                        val scale = 128f / maxOf(bitmap.width, bitmap.height)
-                                        val scaled = android.graphics.Bitmap.createScaledBitmap(
-                                            bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1),
-                                            (bitmap.height * scale).toInt().coerceAtLeast(1), true)
-                                        scaled.asImageBitmap()
+                                    BitmapFactory.decodeStream(stream, null, bounds)
+                                }
+                                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null
+                                else {
+                                    var sample = 1
+                                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 256) {
+                                        sample *= 2
+                                    }
+                                    val options = BitmapFactory.Options().apply {
+                                        inSampleSize = sample
+                                        inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                                    }
+                                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                                        BitmapFactory.decodeStream(stream, null, options)?.asImageBitmap()
                                     }
                                 }
                             } catch (_: Exception) { null }
