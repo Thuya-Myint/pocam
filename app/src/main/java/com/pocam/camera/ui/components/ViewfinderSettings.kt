@@ -1,115 +1,191 @@
 package com.pocam.camera.ui.components
 
+import android.os.Build
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
-import androidx.compose.material3.Slider
-import kotlin.math.roundToInt
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.remember
-import android.os.Build
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val surface = Color(0xE622252D)
+
 @Composable
 fun ViewfinderSettings(
-    grid: Boolean,
-    onGrid: (Boolean) -> Unit,
-    level: Boolean,
-    onLevel: (Boolean) -> Unit,
-    torch: Boolean,
-    torchAvailable: Boolean,
-    onTorch: (Boolean) -> Unit,
-    timer: Int,
-    onTimer: (Int) -> Unit,
-    videoQuality: String,
-    onVideoQuality: (String) -> Unit,
-    exposure: Int,
-    exposureRange: IntRange,
-    onExposure: (Int) -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    grid: Boolean, onGrid: (Boolean) -> Unit,
+    level: Boolean, onLevel: (Boolean) -> Unit,
+    torch: Boolean, torchAvailable: Boolean, onTorch: (Boolean) -> Unit,
+    timer: Int, onTimer: (Int) -> Unit,
+    videoQuality: String, onVideoQuality: (String) -> Unit,
+    exposure: Int, exposureRange: IntRange, onExposure: (Int) -> Unit,
+    onClose: () -> Unit, modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val accent = remember(context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context).primary
-        else Color(0xFFFFD88C)
+        else Color(0xFF89B9FF)
     }
-    Column(modifier.background(Color(0xF722252D), RoundedCornerShape(22.dp))
-        .animateContentSize().padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("CAMERA SETTINGS", color = Color.White, fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp, fontSize = 12.sp)
-            Text("DONE", color = accent, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                modifier = Modifier.clickable(onClick = onClose))
+    var section by remember { mutableStateOf("Capture") }
+    var photoResolution by remember { mutableStateOf("Maximum available") }
+    var imageFormat by remember { mutableStateOf("JPEG") }
+    var hdr by remember { mutableStateOf(false) }
+    var shutterSound by remember { mutableStateOf(true) }
+    var focusTracking by remember { mutableStateOf(false) }
+    var stabilization by remember { mutableStateOf(true) }
+    var appearance by remember { mutableStateOf("System") }
+    var dialog by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(Modifier.fillMaxWidth().background(surface, RoundedCornerShape(30.dp))
+            .padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp).background(Color(0xFF30343D), CircleShape)
+                .clickable(onClick = onClose), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.ArrowBack, "Back to camera", tint = Color.White)
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Settings", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Pocam Camera", color = Color.LightGray, fontSize = 13.sp)
+            }
+            Box(Modifier.size(48.dp).background(Color(0xFF30343D), CircleShape),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Tune, null, tint = accent)
+            }
         }
-        HorizontalDivider(color = Color.White.copy(alpha = .12f))
-        SettingsSwitch("Composition grid", grid, accent = accent) { onGrid(!grid) }
-        SettingsSwitch("Center crosshair", level, accent = accent) { onLevel(!level) }
-        SettingsSwitch("Live torch", torch, torchAvailable, accent) { onTorch(!torch) }
-        Text("VIDEO RESOLUTION", color = Color.LightGray, fontSize = 11.sp,
-            letterSpacing = 1.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            listOf("720p", "1080p", "4K").forEach { option ->
-                val selected = videoQuality == option
-                Box(Modifier.size(56.dp)
-                    .background(if (selected) accent else Color(0xFF383C46), CircleShape)
-                    .clickable { onVideoQuality(option) },
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Capture", "Camera", "Video", "Appearance").forEach { name ->
+                Box(Modifier.weight(1f).background(
+                    if (section == name) accent else surface, CircleShape)
+                    .clickable { section = name }.padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center) {
-                    Text(option, color = if (selected) Color.Black else Color.White,
-                        fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                    Text(name, color = if (section == name) Color.Black else Color.White,
+                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
-        Text("CAPTURE TIMER", color = Color.LightGray, fontSize = 11.sp,
-            letterSpacing = 1.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            listOf(0, 3, 5, 10).forEach { seconds ->
-                val selected = timer == seconds
-                Box(Modifier.size(56.dp)
-                    .background(if (selected) accent else Color(0xFF383C46), CircleShape)
-                    .clickable { onTimer(seconds) }
-                    .semantics { contentDescription = if (seconds == 0)
-                        "Timer off" else "Timer $seconds seconds" },
-                    contentAlignment = Alignment.Center) {
-                    Text(if (seconds == 0) "OFF" else "${seconds}s",
-                        color = if (selected) Color.Black else Color.White,
-                        fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        when (section) {
+            "Capture" -> {
+                SettingsGroup("Capture", Icons.Rounded.CameraAlt, accent) {
+                    SettingsChoice(Icons.Rounded.PhotoSizeSelectLarge, "Photo resolution", photoResolution) { dialog = "Photo resolution" }
+                    SettingsChoice(Icons.Rounded.Image, "Image format", imageFormat) { dialog = "Image format" }
+                    SettingsToggle(Icons.Rounded.HdrOn, "HDR", "Improve highlight and shadow detail", hdr, accent) { hdr = it }
+                    SettingsToggle(Icons.Rounded.GridOn, "Grid lines", "Rule of thirds", grid, accent, onGrid)
+                    SettingsToggle(Icons.Rounded.Straighten, "Level guide", "Keep photos straight", level, accent, onLevel)
+                }
+                SettingsGroup("Capture timer", Icons.Rounded.Timer, accent) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        listOf(0, 3, 5, 10).forEach { seconds ->
+                            val selected = timer == seconds
+                            Box(Modifier.size(58.dp).background(if (selected) accent else Color(0xFF383C46), CircleShape)
+                                .clickable { onTimer(seconds) }, contentAlignment = Alignment.Center) {
+                                Text(if (seconds == 0) "OFF" else "${seconds}s",
+                                    color = if (selected) Color.Black else Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            "Camera" -> SettingsGroup("Camera", Icons.Rounded.Settings, accent) {
+                SettingsToggle(Icons.Rounded.FlashOn, "Live torch", "Use camera light", torch, accent, onTorch, torchAvailable)
+                SettingsToggle(Icons.Rounded.VolumeUp, "Shutter sound", "Play sound when taking a photo", shutterSound, accent) { shutterSound = it }
+                SettingsToggle(Icons.Rounded.CenterFocusStrong, "Focus tracking", "Track moving subjects", focusTracking, accent) { focusTracking = it }
+                SettingsChoice(Icons.Rounded.Exposure, "Exposure", "${exposure} steps") { dialog = "Exposure" }
+            }
+            "Video" -> SettingsGroup("Video", Icons.Rounded.Videocam, accent) {
+                SettingsChoice(Icons.Rounded.HighQuality, "Video resolution", videoQuality) { dialog = "Video resolution" }
+                SettingsToggle(Icons.Rounded.Videocam, "Video stabilization", "Reduce shake while recording", stabilization, accent) { stabilization = it }
+            }
+            else -> SettingsGroup("Appearance", Icons.Rounded.Palette, accent) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("System", "Light", "Dark").forEach { name ->
+                        Box(Modifier.weight(1f).background(if (appearance == name) accent else Color(0xFF343740), CircleShape)
+                            .clickable { appearance = name }.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center) {
+                            Text(name, color = if (appearance == name) Color.Black else Color.White)
+                        }
+                    }
                 }
             }
         }
+    }
+    dialog?.let { target ->
+        val options = when (target) {
+            "Photo resolution" -> listOf("Maximum available", "12 MP", "8 MP")
+            "Image format" -> listOf("JPEG", "HEIF")
+            "Video resolution" -> listOf("720p", "1080p", "4K")
+            else -> emptyList()
+        }
+        AlertDialog(onDismissRequest = { dialog = null },
+            title = { Text(target) },
+            text = { Column {
+                if (options.isEmpty()) Text("Adjust exposure using the camera's expanded header.")
+                options.forEach { option ->
+                    Text(option, Modifier.fillMaxWidth().clickable {
+                        when (target) {
+                            "Photo resolution" -> photoResolution = option
+                            "Image format" -> imageFormat = option
+                            "Video resolution" -> onVideoQuality(option)
+                        }
+                        dialog = null
+                    }.padding(14.dp))
+                }
+            } },
+            confirmButton = { TextButton(onClick = { dialog = null }) { Text("Close") } })
     }
 }
 
 @Composable
-private fun SettingsSwitch(label: String, enabled: Boolean,
-                           available: Boolean = true, accent: Color, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(enabled = available, onClick = onClick)
-        .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = if (available) Color.White else Color.Gray, fontSize = 13.sp)
-        Text(if (!available) "N/A" else if (enabled) "ON" else "OFF",
-            color = if (enabled && available) accent else Color.Gray,
-            fontSize = 12.sp, fontWeight = FontWeight.Bold)
+private fun SettingsGroup(title: String, icon: ImageVector, accent: Color, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(start = 12.dp)) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
+        }
+        Column(Modifier.fillMaxWidth().background(surface, RoundedCornerShape(28.dp))
+            .padding(horizontal = 18.dp, vertical = 12.dp), content = content)
+    }
+}
+
+@Composable
+private fun SettingsChoice(icon: ImageVector, title: String, value: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Medium)
+            Text(value, color = Color.LightGray, fontSize = 12.sp)
+        }
+        Icon(Icons.Rounded.ChevronRight, null, tint = Color.LightGray)
+    }
+}
+
+@Composable
+private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String,
+    checked: Boolean, accent: Color, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = if (enabled) Color.White else Color.Gray, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (enabled) Color.White else Color.Gray, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = Color.LightGray, fontSize = 12.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled,
+            colors = SwitchDefaults.colors(checkedTrackColor = accent))
     }
 }
