@@ -91,23 +91,23 @@ fun ProControlRail(
     val railShape = RoundedCornerShape(25.dp)
     Column(
         modifier.width(51.dp)
-            .background(Color(0xE914161C), railShape)
-            .border(0.75.dp, PocamPalette.Steel.copy(alpha = .7f), railShape)
+            .background(Color(0xF5F8F9FA), railShape)
+            .border(0.75.dp, Color(0xFFADB4BD).copy(alpha = .6f), railShape)
             .padding(horizontal = 3.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         labels.forEach { (key, value) ->
             val active = (if (state.selected == "SHUTTER") "S" else state.selected) == key
             val activeFill by animateColorAsState(
-                targetValue = if (active) Color(0x331F1A17) else Color.Transparent,
+                targetValue = if (active) Color(0xFF252830) else Color.Transparent,
                 animationSpec = if (motionEnabled) tween(145) else snap(),
                 label = "pocam-pro-rail-highlight"
             )
             Column(
                 Modifier.fillMaxWidth().height(58.dp)
                     .background(activeFill, CircleShape)
-                    .border(if (active) 0.85.dp else 0.dp,
-                        if (active) PocamPalette.Orange else Color.Transparent, CircleShape)
+                    .border(if (active) .65.dp else 0.dp,
+                        if (active) Color(0xFF252830) else Color.Transparent, CircleShape)
                     .clickable {
                         state.selected = if (key == "S") "SHUTTER" else key
                         onExpanded(true)
@@ -115,10 +115,10 @@ fun ProControlRail(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(key, color = if (active) PocamPalette.Orange else Color.White,
+                Text(key, color = if (active) Color.White else Color(0xFF252830),
                     fontWeight = FontWeight.Medium, fontSize = 9.sp, maxLines = 1)
                 Spacer(Modifier.height(3.dp))
-                Text(value, color = if (active) PocamPalette.OrangeSoft else Color.White,
+                Text(value, color = if (active) Color.White else Color(0xFF454C56),
                     fontSize = 8.sp, maxLines = 1)
             }
             Spacer(Modifier.height(2.dp))
@@ -127,7 +127,7 @@ fun ProControlRail(
             contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.KeyboardArrowDown,
                 contentDescription = if (expanded) "Collapse Pro adjustment tray" else "Expand Pro adjustment tray",
-                tint = Color.White, modifier = Modifier.size(18.dp)
+                tint = Color(0xFF252830), modifier = Modifier.size(18.dp)
                     .graphicsLayer { rotationZ = chevronRotation.value })
         }
     }
@@ -161,8 +161,8 @@ fun ProParameterTray(
                 alpha = enter.value
                 translationY = 7.dp.toPx() * (1f - enter.value)
             }
-            .background(Color(0xF0181A20), RoundedCornerShape(18.dp))
-            .border(0.75.dp, PocamPalette.Steel.copy(alpha=.58f), RoundedCornerShape(18.dp))
+            .background(Color(0xF9F9FAFB), RoundedCornerShape(18.dp))
+            .border(.75.dp, Color(0xFFBAC0C8).copy(alpha=.55f), RoundedCornerShape(18.dp))
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
@@ -171,18 +171,17 @@ fun ProParameterTray(
             listOf("ISO", "SHUTTER", "WB", "FOCUS", "EV").forEach { item ->
                 val selected = active == item
                 Box(Modifier.weight(1f)
-                    .background(if (selected) PocamPalette.Orange.copy(alpha = .08f)
+                    .background(if (selected) Color(0xFF252830)
                         else Color.Transparent, CircleShape)
-                    .border(if (selected) 0.85.dp else 0.dp,
-                        if (selected) PocamPalette.Orange else Color.Transparent, CircleShape)
+                    .border(0.dp, Color.Transparent, CircleShape)
                     .clickable { state.selected = item }
                     .height(29.dp), contentAlignment = Alignment.Center) {
                     Text(if (item == "SHUTTER") "S" else item, fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (selected) PocamPalette.Orange else Color.White)
+                        color = if (selected) Color.White else Color(0xFF252830))
                 }
             }
-            Box(Modifier.size(25.dp).background(PocamPalette.Graphite, CircleShape)
+            Box(Modifier.size(25.dp).background(Color(0xFFE5E7EB), CircleShape)
                 .clickable(onClick = onDetailsToggle),
                 contentAlignment = Alignment.Center) {
                 Icon(
@@ -190,7 +189,7 @@ fun ProParameterTray(
                     else Icons.Rounded.KeyboardArrowUp,
                     contentDescription = if (expanded) "Show compact Pro controls"
                         else "Show all Pro presets",
-                    tint = Color.White, modifier = Modifier.size(17.dp)
+                    tint = Color(0xFF252830), modifier = Modifier.size(17.dp)
                 )
             }
         }
@@ -206,7 +205,7 @@ fun ProParameterTray(
                 } else {
                     val value = isoAt(range, state.isoFraction)
                     Text(if (state.isoAuto) "ISO · AUTO" else "ISO · $value",
-                        color = PocamPalette.OrangeSoft, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        color = Color(0xFF252830), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     StraightRuler(
                         value=state.isoFraction, valueRange=0f..1f,
                         label=if (state.isoAuto) "AUTO" else "$value",
@@ -214,7 +213,7 @@ fun ProParameterTray(
                             state.isoFraction = fraction
                             state.isoAuto = false
                             controller.setManualIso(isoAt(range, fraction))
-                        }, showLabel = false, compact = true
+                        }, showLabel = false, compact = true, darkOnLight = true
                     )
                     if (expanded) PresetRow(
                         listOf("AUTO", "100", "200", "400", "800"),
@@ -239,7 +238,7 @@ fun ProParameterTray(
                     val ns=shutterAt(range,state.shutterFraction)
                     Text(if(state.shutterAuto) "SHUTTER · AUTO"
                         else "SHUTTER · ${shutterLabel(ns)}",
-                        color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                        color=Color(0xFF252830),fontWeight=FontWeight.Bold,fontSize=13.sp)
                     StraightRuler(
                         value=state.shutterFraction,valueRange=0f..1f,
                         label=if(state.shutterAuto) "AUTO" else shutterLabel(ns),
@@ -247,7 +246,7 @@ fun ProParameterTray(
                             state.shutterFraction=f
                             state.shutterAuto=false
                             controller.setManualExposureNs(shutterAt(range,f))
-                        }, showLabel = false, compact = true)
+                        }, showLabel = false, compact = true, darkOnLight = true)
                     if (expanded) PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
                         active=if(state.shutterAuto) "AUTO" else shutterLabel(ns)) { preset ->
                         if(preset=="AUTO") { state.shutterFraction=0f; state.shutterAuto=true; controller.setManualExposureNs(null) }
@@ -262,7 +261,7 @@ fun ProParameterTray(
                 }
             }
             "WB" -> {
-                Text("WHITE BALANCE",color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                Text("WHITE BALANCE",color=Color(0xFF252830),fontWeight=FontWeight.Bold,fontSize=13.sp)
                 val modes=listOf(
                     "AUTO" to CaptureRequest.CONTROL_AWB_MODE_AUTO,
                     "DAY" to CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT,
@@ -283,13 +282,13 @@ fun ProParameterTray(
                 else {
                     Text(if(state.focusAuto) "FOCUS · AUTO"
                          else String.format(Locale.US,"FOCUS · %.2f D",distance*state.focusFraction),
-                        color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                        color=Color(0xFF252830),fontWeight=FontWeight.Bold,fontSize=13.sp)
                     StraightRuler(state.focusFraction,0f..1f,
                         { f -> state.focusFraction=f
                             state.focusAuto=false
                             controller.setManualFocus(f*distance)
                         },if(state.focusAuto) "AF" else "MF",
-                        showLabel = false, compact = true)
+                        showLabel = false, compact = true, darkOnLight = true)
                     if (expanded) PresetRow(listOf("AUTO","MANUAL"),
                         if(state.focusAuto)"AUTO" else "MANUAL") { choice ->
                         state.focusAuto=choice=="AUTO"
@@ -303,13 +302,13 @@ fun ProParameterTray(
                 if(exposureRange.first>=exposureRange.last) NotSupported("Exposure compensation unavailable")
                 else {
                     val label=String.format(Locale.US,"EV · %+.1f",exposureIndex*exposureStepEv)
-                    Text(label,color=PocamPalette.OrangeSoft,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                    Text(label,color=Color(0xFF252830),fontWeight=FontWeight.Bold,fontSize=13.sp)
                     StraightRuler(exposureIndex.toFloat(),
                         exposureRange.first.toFloat()..exposureRange.last.toFloat(),
                         { value ->
                             val next=value.roundToInt().coerceIn(exposureRange)
                             if(next!=exposureIndex)onExposure(next)
-                        },label, showLabel = false, compact = true)
+                        },label, showLabel = false, compact = true, darkOnLight = true)
                 }
             }
         }
@@ -319,21 +318,20 @@ fun ProParameterTray(
 
 @Composable
 private fun NotSupported(message:String) {
-    Text(message,color=PocamPalette.Silver,fontSize=11.sp,modifier=Modifier.padding(vertical=10.dp))
+    Text(message,color=Color(0xFF767D87),fontSize=11.sp,modifier=Modifier.padding(vertical=10.dp))
 }
 @Composable
 private fun PresetRow(presets:List<String>,active:String,onChoose:(String)->Unit) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
         presets.forEach { label ->
             Box(Modifier.weight(1f)
-                .background(if(label==active)PocamPalette.Orange.copy(alpha=.13f)
-                    else PocamPalette.Graphite,CircleShape)
-                .border(if(label==active)1.dp else 0.dp,
-                    if(label==active)PocamPalette.Orange else Color.Transparent,CircleShape)
+                .background(if(label==active)Color(0xFF252830)
+                    else Color(0xFFE5E7EB),CircleShape)
+                .border(0.dp,Color.Transparent,CircleShape)
                 .clickable{onChoose(label)}.padding(vertical=6.dp),
                 contentAlignment=Alignment.Center) {
                 Text(label,fontSize=9.sp,fontWeight=FontWeight.Medium,
-                    color=if(label==active)PocamPalette.Orange else Color.White)
+                    color=if(label==active)Color.White else Color(0xFF252830))
             }
         }
     }
