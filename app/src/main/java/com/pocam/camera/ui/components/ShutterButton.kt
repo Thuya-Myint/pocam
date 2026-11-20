@@ -60,8 +60,8 @@ fun ShutterButton(
 
     Box(
         Modifier.size(74.dp)
-            .border(3.dp, Color(0xFF24272D), CircleShape)
-            .background(Color(0xFFF9FAFB), CircleShape)
+            .border(2.5.dp, PocamPalette.Orange, CircleShape)
+            .background(PocamPalette.Graphite, CircleShape)
             .semantics {
                 contentDescription = if (recording) "Stop recording"
                     else if (busy) "Saving photo"
@@ -83,7 +83,7 @@ fun ShutterButton(
                 }
                 .background(
                     if (recording) Brush.linearGradient(listOf(Color(0xFFE43A1D),PocamPalette.Orange))
-                    else Brush.linearGradient(listOf(Color.White,Color(0xFFF1F2F4),Color.White)),
+                    else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF7F8FA))),
                     if (recording) RoundedCornerShape(12.dp) else CircleShape
                 )
         )
