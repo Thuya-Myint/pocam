@@ -14,6 +14,25 @@ android {
         targetSdk = 35
         versionCode = 5
         versionName = "0.5.0"
+        manifestPlaceholders["appLabel"] = "Pocam"
+    }
+
+    // Side-by-side, non-debuggable and R8-optimized performance test package.
+    // Signed with the standard debug key ONLY for installation; never publish
+    // this variant as the Play Store release.
+    buildTypes {
+        create("benchmark") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".benchmark"
+            versionNameSuffix = "-benchmark"
+            manifestPlaceholders["appLabel"] = "Pocam Benchmark"
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            matchingFallbacks += listOf("release")
+        }
     }
 
     buildFeatures { compose = true }
