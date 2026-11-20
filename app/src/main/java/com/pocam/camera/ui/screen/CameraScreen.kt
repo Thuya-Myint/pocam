@@ -826,7 +826,7 @@ fun CameraScreen() {
                     }
                 }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
-                    tint = Color.White)
+                    tint = Color(0xFF252830))
             }
         }
         }
