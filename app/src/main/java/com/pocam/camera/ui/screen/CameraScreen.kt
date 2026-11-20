@@ -353,16 +353,16 @@ fun CameraScreen() {
                 )
             })
         }
-        if (crosshairEnabled) {
+        if (!showSettings && crosshairEnabled) {
             Box(Modifier.align(Alignment.Center).size(20.dp),
                 contentAlignment = Alignment.Center) {
                 Text("+", color = Color.White.copy(alpha = .8f), fontSize = 24.sp)
             }
         }
-        if (gridEnabled) {
+        if (!showSettings && gridEnabled) {
             CameraGrid(Modifier.fillMaxSize().padding(top = 80.dp, bottom = 200.dp))
         }
-        focusPoint?.let { point ->
+        if (!showSettings) focusPoint?.let { point ->
             val density = LocalDensity.current
             val reticleSize = with(density) { 64.dp.roundToPx() }
             val viewWidth = with(density) { maxWidth.toPx() }.toInt()
@@ -379,7 +379,7 @@ fun CameraScreen() {
                 },
                 motionEnabled = motionEnabled, pulseKey = focusSequence)
         }
-        CaptureFlash(captureFlash, Modifier.fillMaxSize())
+        if (!showSettings) CaptureFlash(captureFlash, Modifier.fillMaxSize())
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
