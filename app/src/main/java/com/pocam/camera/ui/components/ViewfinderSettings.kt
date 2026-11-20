@@ -1,5 +1,6 @@
 package com.pocam.camera.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -72,8 +73,13 @@ fun ViewfinderSettings(
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             listOf("Capture","Camera","Video","Appearance").forEach { section ->
                 val selected=section==tab
+                val tabFill by animateColorAsState(
+                    targetValue = if (selected) orange else PocamPalette.Graphite,
+                    animationSpec = if (motionEnabled) tween(120) else snap(),
+                    label = "pocam-settings-tab"
+                )
                 Box(Modifier.weight(1f).background(
-                    if(selected)orange else PocamPalette.Graphite,CircleShape)
+                    tabFill,CircleShape)
                     .clickable { tab=section }.padding(vertical=10.dp),
                     contentAlignment=Alignment.Center) {
                     Text(section,fontSize=11.sp,
