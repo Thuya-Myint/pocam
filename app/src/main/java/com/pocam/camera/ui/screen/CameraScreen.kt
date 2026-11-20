@@ -388,30 +388,30 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(Color(0xFFF4F5F7).copy(alpha = headerOpacity))
+                .background(PocamPalette.Black.copy(alpha = headerOpacity))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .padding(start = 13.dp, end = 13.dp, top = 8.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(38.dp)
-                        .background(Color(0xE9FFFFFF), CircleShape)
+                        .background(Color(0xE923262D), CircleShape)
                         .clickable { showMore = !showMore },
                         contentAlignment = Alignment.Center) {
                         Icon(if (showMore) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                             contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
-                            tint = Color(0xFF252830))
+                            tint = Color.White)
                     }
                     Row(Modifier.weight(1f).padding(start = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("pocam", color = Color(0xFF252830), fontSize = 18.sp,
+                        Text("pocam", color = Color.White, fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
                         Text(".", color = PocamPalette.Orange, fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         Box(Modifier.size(38.dp)
-                            .background(Color(0xE9FFFFFF), CircleShape)
+                            .background(Color(0xE923262D), CircleShape)
                             .clickable {
                                 if (controller.hasTorch()) {
                                     torchEnabled = !torchEnabled
@@ -420,25 +420,25 @@ fun CameraScreen() {
                             }, contentAlignment = Alignment.Center) {
                             Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
                                 contentDescription = "Toggle torch",
-                                tint = if (torchEnabled) accent else Color(0xFF252830),
+                                tint = if (torchEnabled) accent else Color.White,
                                 modifier = Modifier.size(21.dp))
                         }
                         Box(Modifier.size(38.dp)
-                            .background(Color(0xE9FFFFFF), CircleShape)
+                            .background(Color(0xE923262D), CircleShape)
                             .clickable {
                                 gridEnabled = !gridEnabled
                                 preferences.edit().putBoolean("grid", gridEnabled).apply()
                             }, contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
-                                tint = if (gridEnabled) accent else Color(0xFF252830),
+                                tint = if (gridEnabled) accent else Color.White,
                                 modifier = Modifier.size(21.dp))
                         }
                         Box(Modifier.size(38.dp)
-                            .background(Color(0xE9FFFFFF), CircleShape)
+                            .background(Color(0xE923262D), CircleShape)
                             .clickable { showMore = false; showSettings = true },
                             contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.Tune, contentDescription = "Open settings page",
-                                tint = Color(0xFF252830), modifier = Modifier.size(21.dp))
+                                tint = Color.White, modifier = Modifier.size(21.dp))
                         }
                     }
                 }
@@ -449,7 +449,7 @@ fun CameraScreen() {
                 ) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("QUICK CONTROLS", color = Color(0xFF252830),
+                        Text("QUICK CONTROLS", color = PocamPalette.Orange,
                             fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             @Composable
@@ -459,15 +459,15 @@ fun CameraScreen() {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(Modifier.size(52.dp)
-                                        .background(if(selected) Color(0xFF252830)
-                                            else Color.White,CircleShape)
+                                        .background(if(selected) PocamPalette.Orange.copy(alpha = .18f)
+                                            else PocamPalette.Graphite,CircleShape)
                                         .clickable(onClick=onClick),
                                         contentAlignment = Alignment.Center) {
                                         Icon(icon, contentDescription=label,
-                                            tint=if(selected)Color.White else Color(0xFF252830),
+                                            tint=if(selected)PocamPalette.Orange else Color.White,
                                             modifier=Modifier.size(23.dp))
                                     }
-                                    Text(label,color=Color(0xFF505862),fontSize=10.sp)
+                                    Text(label,color=PocamPalette.Silver,fontSize=10.sp)
                                 }
                             }
                             Quick("Torch",torchEnabled,Icons.Rounded.FlashOn) {
@@ -500,7 +500,7 @@ fun CameraScreen() {
                                 },
                                 label="${exposureIndex} EV steps",
                                 onDetent={playUiTone()},
-                                darkOnLight = true
+                                darkOnLight = false
                             )
                         }
                     }
@@ -509,10 +509,10 @@ fun CameraScreen() {
             Box(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 // Compact outlined badge directly below the header, like the approved design.
                 .padding(top = 77.dp)
-                .background(Color(0xEDFFFFFF), CircleShape)
-                .border(.75.dp, Color(0x88252830), CircleShape)
+                .background(Color(0xE916181E), CircleShape)
+                .border(.75.dp, PocamPalette.Orange.copy(alpha = .5f), CircleShape)
                 .padding(horizontal = 14.dp, vertical = 4.dp)) {
-                Text(mode.name, color = Color(0xFF252830), fontSize = 10.sp,
+                Text(mode.name, color = PocamPalette.Orange, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
@@ -522,7 +522,7 @@ fun CameraScreen() {
         // and frame skips on some Android devices. Immediate navigation is cheaper.
         if (showSettings) {
             Box(Modifier.fillMaxSize().zIndex(30f)
-                .background(Color(0xFFF4F5F7))
+                .background(PocamPalette.Carbon)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .navigationBarsPadding()) {
                 // ViewfinderSettings owns a fixed header/tabs and a separate
@@ -589,7 +589,7 @@ fun CameraScreen() {
                 Modifier.align(Alignment.BottomCenter).zIndex(8f)
                     .fillMaxWidth().height(265.dp)
                     .background(
-                        Color(0xEDF4F5F7),
+                        Color(0xF0121318),
                         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                     )
             )
@@ -725,7 +725,7 @@ fun CameraScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp)
-                .background(Color(0xF8FFFFFF), CircleShape)
+                .background(Color(0xE923262D), CircleShape)
                 .clickable(enabled = lastPhoto != null) {
                     lastPhoto?.let { uri ->
                         if (uri.toString().contains("/video/")) {
@@ -744,7 +744,7 @@ fun CameraScreen() {
                         modifier = Modifier.fillMaxSize().clip(CircleShape))
                 } else {
                     Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
-                        tint = Color(0xFF252830))
+                        tint = Color.White)
                 }
             }
             // Keep shutter fixed and separate from the curved, tappable mode selector.
@@ -806,7 +806,7 @@ fun CameraScreen() {
                 }
             }
             Box(Modifier.size(43.dp)
-                .background(Color(0xF8FFFFFF), CircleShape)
+                .background(Color(0xE923262D), CircleShape)
                 .clickable(enabled = !captureBusy && !recordingVideo) {
                     showSettings = false
                     showProPanel = false
@@ -827,7 +827,7 @@ fun CameraScreen() {
                     }
                 }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Cameraswitch, contentDescription = "Switch camera",
-                    tint = Color(0xFF252830))
+                    tint = Color.White)
             }
         }
         }
