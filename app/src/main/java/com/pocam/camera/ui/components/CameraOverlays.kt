@@ -232,9 +232,10 @@ fun StraightRuler(
     modifier: Modifier = Modifier,
     onDetent: () -> Unit = {},
     showLabel: Boolean = true,
-    compact: Boolean = false
+    compact: Boolean = false,
+    darkOnLight: Boolean = false
 ) {
-    val accent = cameraAccent()
+    val accent = if (darkOnLight) Color(0xFF252830) else cameraAccent()
     val haptics = LocalHapticFeedback.current
     val currentSelect by rememberUpdatedState(onValueChange)
     val currentDetent by rememberUpdatedState(onDetent)
@@ -286,6 +287,7 @@ fun StraightRuler(
                 val height = (if (major) 19f else 11f) + 8f * near
                 drawLine(
                     if (near > 0f) accent.copy(alpha = .4f + .6f * near)
+                    else if (darkOnLight) Color(0xFF8A919A)
                     else Color.White.copy(alpha = .58f),
                     Offset(x, centerY - height.dp.toPx() / 2f),
                     Offset(x, centerY + height.dp.toPx() / 2f),
