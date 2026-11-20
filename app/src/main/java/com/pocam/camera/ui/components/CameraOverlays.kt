@@ -1,6 +1,7 @@
 package com.pocam.camera.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,9 +71,22 @@ fun CameraGrid(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FocusReticle(xFraction: Float, yFraction: Float, modifier: Modifier = Modifier) {
+fun FocusReticle(
+    xFraction: Float, yFraction: Float, modifier: Modifier = Modifier,
+    motionEnabled: Boolean = true, pulseKey: Int = 0
+) {
     val accent = cameraAccent()
-    Box(modifier, contentAlignment = Alignment.Center) {
+    val focusScale = remember { Animatable(1f) }
+    LaunchedEffect(pulseKey, motionEnabled) {
+        if (motionEnabled) {
+            focusScale.snapTo(.82f)
+            focusScale.animateTo(1f, tween(175, easing = FastOutSlowInEasing))
+        } else focusScale.snapTo(1f)
+    }
+    Box(modifier.graphicsLayer {
+        scaleX = focusScale.value
+        scaleY = focusScale.value
+    }, contentAlignment = Alignment.Center) {
         Box(Modifier.size(64.dp).border(1.5.dp, accent,
             RoundedCornerShape(12.dp)))
         Box(Modifier.size(4.dp).background(accent, CircleShape))
