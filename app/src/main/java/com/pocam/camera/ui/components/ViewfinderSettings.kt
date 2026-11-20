@@ -78,12 +78,17 @@ fun ViewfinderSettings(
                     animationSpec = if (motionEnabled) tween(120) else snap(),
                     label = "pocam-settings-tab"
                 )
+                val tabText by animateColorAsState(
+                    targetValue = if (selected) PocamPalette.Black else Color.White,
+                    animationSpec = if (motionEnabled) tween(120) else snap(),
+                    label = "pocam-settings-tab-text"
+                )
                 Box(Modifier.weight(1f).background(
                     tabFill,CircleShape)
                     .clickable { tab=section }.padding(vertical=10.dp),
                     contentAlignment=Alignment.Center) {
                     Text(section,fontSize=11.sp,
-                        color=if(selected)PocamPalette.Black else Color.White,
+                        color=tabText,
                         fontWeight=FontWeight.SemiBold)
                 }
             }
