@@ -136,8 +136,8 @@ fun CurvedModeSelector(
                     }
                     val native = drawContext.canvas.nativeCanvas
                     modes.forEachIndexed { i, mode ->
-                        nativePaint.color = if (mode == active) Color.Black.toArgb()
-                            else Color.White.toArgb()
+                        nativePaint.color = if (kotlin.math.abs(animatedIndex - i.toFloat()) < .43f)
+                            Color.Black.toArgb() else Color.White.toArgb()
                         nativePaint.alpha = if (i == 0 || i == modes.lastIndex) 195 else 255
                         val point = centers[i]
                         val save = native.save()
