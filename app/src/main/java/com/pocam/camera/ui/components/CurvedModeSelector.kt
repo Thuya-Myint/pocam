@@ -18,6 +18,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.drawRect
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -26,9 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.pocam.camera.domain.model.CameraMode
 
 /**
- * Flat mode strip. Retains the previous function signature for CameraScreen,
- * but intentionally removes the curved Canvas ribbon: native Compose text and
- * capsules are predictable at any density and font scale.
+ * Minimal charcoal mode strip with soft left/right alpha feathering.
+ * The small offscreen layer is confined to this 52dp bar, never the camera
+ * preview. Inactive labels stay high-contrast; selected mode uses Pocam orange.
  */
 @Composable
 fun CurvedModeSelector(
@@ -48,7 +54,20 @@ fun CurvedModeSelector(
     Row(
         modifier.fillMaxWidth()
             .height(52.dp)
-            .background(Color(0xF7F8F9FA), RoundedCornerShape(24.dp))
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        .12f to Color.Black,
+                        .88f to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+            .background(Color(0xEE15181E), RoundedCornerShape(24.dp))
             .padding(horizontal = 4.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -56,12 +75,12 @@ fun CurvedModeSelector(
         modes.forEach { mode ->
             val active = mode == current
             val fill by animateColorAsState(
-                targetValue = if (active) Color(0xFF24272D) else Color.Transparent,
+                targetValue = if (active) PocamPalette.Orange else Color.Transparent,
                 animationSpec = if (motionEnabled) tween(140) else snap(),
                 label = "flat-mode-selection"
             )
             val foreground by animateColorAsState(
-                targetValue = if (active) Color.White else Color(0xFF252932),
+                targetValue = if (active) PocamPalette.Black else Color.White,
                 animationSpec = if (motionEnabled) tween(140) else snap(),
                 label = "flat-mode-text"
             )
