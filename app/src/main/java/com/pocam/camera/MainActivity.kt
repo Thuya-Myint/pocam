@@ -17,8 +17,8 @@ class MainActivity : ComponentActivity() {
         // but Compose needs real status/cutout insets to position the header safely.
         WindowInsetsControllerCompat(window, window.decorView).apply {
             show(WindowInsetsCompat.Type.systemBars())
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
         setContent { PocamTheme { CameraScreen() } }
     }
