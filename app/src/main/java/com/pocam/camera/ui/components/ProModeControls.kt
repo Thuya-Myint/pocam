@@ -2,6 +2,9 @@ package com.pocam.camera.ui.components
 
 import android.hardware.camera2.CaptureRequest
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,7 +62,7 @@ fun ProControlRail(
     state: ProUiState, controller: CameraController, cameraGeneration: Int,
     exposureIndex: Int, exposureStepEv: Float,
     expanded: Boolean, onExpanded: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier, motionEnabled: Boolean = true
 ) {
     val caps = remember(controller, cameraGeneration) { controller.manualCapabilities() }
     val isoRange = caps?.isoRange
@@ -78,6 +82,11 @@ fun ProControlRail(
         "EV" to String.format(Locale.US, "%+.1f", exposureIndex * exposureStepEv)
     )
     // Pencil-thin control rail; fixed cell heights make every row line up.
+    val chevronRotation = animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = if (motionEnabled) tween(155) else snap(),
+        label = "pocam-pro-chevron"
+    )
     val railShape = RoundedCornerShape(25.dp)
     Column(
         modifier.width(51.dp)
@@ -88,9 +97,14 @@ fun ProControlRail(
     ) {
         labels.forEach { (key, value) ->
             val active = (if (state.selected == "SHUTTER") "S" else state.selected) == key
+            val activeFill by animateColorAsState(
+                targetValue = if (active) Color(0x331F1A17) else Color.Transparent,
+                animationSpec = if (motionEnabled) tween(145) else snap(),
+                label = "pocam-pro-rail-highlight"
+            )
             Column(
                 Modifier.fillMaxWidth().height(58.dp)
-                    .background(if (active) Color(0x331F1A17) else Color.Transparent, CircleShape)
+                    .background(activeFill, CircleShape)
                     .border(if (active) 0.85.dp else 0.dp,
                         if (active) PocamPalette.Orange else Color.Transparent, CircleShape)
                     .clickable {
@@ -110,9 +124,10 @@ fun ProControlRail(
         }
         Box(Modifier.fillMaxWidth().height(25.dp).clickable { onExpanded(!expanded) },
             contentAlignment = Alignment.Center) {
-            Icon(if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+            Icon(Icons.Rounded.KeyboardArrowDown,
                 contentDescription = if (expanded) "Collapse Pro adjustment tray" else "Expand Pro adjustment tray",
-                tint = Color.White, modifier = Modifier.size(18.dp))
+                tint = Color.White, modifier = Modifier.size(18.dp)
+                    .graphicsLayer { rotationZ = chevronRotation.value })
         }
     }
 }
