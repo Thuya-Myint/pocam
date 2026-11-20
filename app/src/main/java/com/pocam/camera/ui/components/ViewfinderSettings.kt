@@ -1,5 +1,9 @@
 package com.pocam.camera.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -15,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +40,7 @@ fun ViewfinderSettings(
     shutterSound: Boolean, onShutterSound: (Boolean) -> Unit,
     headerOpacity: Float, onHeaderOpacity: (Float) -> Unit,
     exposure: Int, exposureRange: IntRange, onExposure: (Int) -> Unit,
+    motionEnabled: Boolean, onMotionEnabled: (Boolean) -> Unit,
     onClose: () -> Unit, modifier: Modifier = Modifier
 ) {
     var tab by remember { mutableStateOf("Capture") }
@@ -91,10 +97,10 @@ fun ViewfinderSettings(
                                 "OEM HDR extensions are currently disabled")
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.GridOn,"Grid lines",
-                                "Rule-of-thirds guide",grid,onGrid)
+                                "Rule-of-thirds guide",grid,onGrid,motionEnabled=motionEnabled)
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.CenterFocusStrong,"Center guide",
-                                "Composition crosshair",level,onLevel)
+                                "Composition crosshair",level,onLevel,motionEnabled=motionEnabled)
                         }
                         SettingsSection("Capture timer",Icons.Rounded.Timer) {
                             Row(Modifier.fillMaxWidth().padding(vertical=6.dp),
@@ -116,10 +122,10 @@ fun ViewfinderSettings(
                         SettingsSection("Camera",Icons.Rounded.Tune) {
                             SettingsSwitch(Icons.Rounded.FlashOn,"Live torch",
                                 if(torchAvailable)"Illuminate the preview" else "Flash not available on this camera",
-                                torch,onTorch,enabled=torchAvailable)
+                                torch,onTorch,enabled=torchAvailable,motionEnabled=motionEnabled)
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.VolumeUp,"Shutter sound",
-                                "Play a capture confirmation tone",shutterSound,onShutterSound)
+                                "Play a capture confirmation tone",shutterSound,onShutterSound,motionEnabled=motionEnabled)
                             SettingsSeparator()
                             SettingsInfo(Icons.Rounded.CenterFocusStrong,"Touch focus",
                                 "Tap preview to focus · hold to lock")
@@ -163,7 +169,7 @@ fun ViewfinderSettings(
                             SettingsSeparator()
                             SettingsSwitch(Icons.Rounded.Videocam,"Video stabilization",
                                 "Request smoother video where supported",
-                                videoStabilization,onVideoStabilization)
+                                videoStabilization,onVideoStabilization,motionEnabled=motionEnabled)
                             SettingsSeparator()
                             SettingsInfo(Icons.Rounded.Tune,"Frame rate",
                                 "Automatic  ·  selected by camera hardware")
@@ -202,8 +208,9 @@ fun ViewfinderSettings(
                             SettingsInfo(Icons.Rounded.GridOn,"Control layout",
                                 "Curved zoom and mode selector  ·  fixed")
                             SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"UI animations",
-                                "Reduced motion for responsive camera controls")
+                            SettingsSwitch(Icons.Rounded.AutoAwesome,"Pocam motion",
+                                "Gliding mode pill, tactile shutter, smooth switches",
+                                motionEnabled,onMotionEnabled,motionEnabled=motionEnabled)
                         }
                         SettingsSection("Advanced tools",Icons.Rounded.Tune) {
                             SettingsInfo(Icons.Rounded.Tune,"RAW DNG / Histogram",
@@ -247,16 +254,22 @@ private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
     }
 }
 /**
- * An instant, no-ripple native Compose control with an accessible switch role.
- * Material3 Switch animates its thumb/track; this deliberate camera control
- * updates in the same frame and makes the complete 48dp+ row tappable.
+ * Small, accessibility-aware switch with a compositor-only thumb glide.
+ * No full-page transitions or camera restarts. Respects the Pocam motion toggle
+ * and the system-wide animator duration setting.
  */
 @Composable
 private fun SettingsSwitch(
     icon: ImageVector, name: String, description: String,
-    value: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true
+    value: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true,
+    motionEnabled: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val thumbPosition = animateFloatAsState(
+        targetValue = if (value) 1f else 0f,
+        animationSpec = if (motionEnabled) tween(145, easing=FastOutSlowInEasing) else snap(),
+        label = "pocam-switch-thumb"
+    )
     Row(
         Modifier.fillMaxWidth()
             .toggleable(
@@ -279,24 +292,18 @@ private fun SettingsSwitch(
                 fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Text(description, color = PocamPalette.Silver, fontSize = 11.sp)
         }
-        Row(
+        Box(
             Modifier.width(52.dp).height(32.dp)
-                .background(
-                    if (value) PocamPalette.Orange else PocamPalette.Graphite,
-                    CircleShape
-                )
-                .border(
-                    1.5.dp,
-                    if (value) PocamPalette.Orange else PocamPalette.Steel,
-                    CircleShape
-                )
+                .background(if (value) PocamPalette.Orange else PocamPalette.Graphite, CircleShape)
+                .border(1.5.dp, if (value) PocamPalette.Orange else PocamPalette.Steel, CircleShape)
                 .padding(4.dp),
-            horizontalArrangement = if (value) Arrangement.End else Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
+            contentAlignment = Alignment.CenterStart
         ) {
-            Box(Modifier.size(24.dp).background(
-                if (enabled) Color.White else PocamPalette.Silver,
-                CircleShape))
+            Box(
+                Modifier.size(24.dp)
+                    .graphicsLayer { translationX = 20.dp.toPx() * thumbPosition.value }
+                    .background(if (enabled) Color.White else PocamPalette.Silver, CircleShape)
+            )
         }
     }
 }
