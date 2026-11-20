@@ -53,7 +53,7 @@ fun ShutterButton(
             shutterScale.animateTo(.90f, tween(65))
             shutterScale.animateTo(1f, spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumHigh
+                stiffness = Spring.StiffnessMedium
             ))
         } else shutterScale.snapTo(1f)
     }
