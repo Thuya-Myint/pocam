@@ -515,12 +515,13 @@ fun CameraScreen() {
         // settings tree over a live camera SurfaceView causes large GPU overdraw
         // and frame skips on some Android devices. Immediate navigation is cheaper.
         if (showSettings) {
-            Column(Modifier.fillMaxSize().zIndex(30f)
+            Box(Modifier.fillMaxSize().zIndex(30f)
                 .background(PocamPalette.Carbon)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp)) {
-            ViewfinderSettings(
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .navigationBarsPadding()) {
+                // ViewfinderSettings owns a fixed header/tabs and a separate
+                // scrollable content region. The camera surface stays untouched.
+                ViewfinderSettings(
                 grid = gridEnabled,
                 onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
                 level = crosshairEnabled,
@@ -570,9 +571,9 @@ fun CameraScreen() {
                     motionEnabled = enabled
                     preferences.edit().putBoolean("motion_enabled", enabled).apply()
                 },
-                onClose = { showSettings = false }
-            )
-                }
+                onClose = { showSettings = false },
+                modifier = Modifier.fillMaxSize()
+                )
             }
         }
         // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
