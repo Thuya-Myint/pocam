@@ -376,7 +376,8 @@ fun CameraScreen() {
                             (viewWidth - reticleSize).coerceAtLeast(0)),
                         (y.toInt() - reticleSize / 2).coerceIn(0,
                             (viewHeight - reticleSize).coerceAtLeast(0)))
-                })
+                },
+                motionEnabled = motionEnabled, pulseKey = focusSequence)
         }
         CaptureFlash(captureFlash, Modifier.fillMaxSize())
         // Style 4: floating controls. The chevron expands this surface vertically.
