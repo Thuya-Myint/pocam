@@ -166,7 +166,7 @@ fun ViewfinderSettings(
                             }
                         }
                         FlatDivider()
-                        FlatToggle(Icons.Rounded.Stabilization, "Video stabilization",
+                        FlatToggle(Icons.Rounded.Videocam, "Video stabilization",
                             "Applies where supported", videoStabilization,
                             onVideoStabilization, motionEnabled = motionEnabled)
                         FlatDivider()
