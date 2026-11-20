@@ -656,6 +656,7 @@ fun CameraScreen() {
                 exposureStepEv = controller.exposureStepEv(),
                 onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
                 onCollapse = { showProPanel = false },
+                motionEnabled = motionEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
                     .navigationBarsPadding()
                     .padding(start = 13.dp, end = 13.dp, bottom = 111.dp)
