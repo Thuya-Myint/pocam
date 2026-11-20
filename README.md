@@ -1,37 +1,35 @@
-# Pocam
+# Pocam (Pocket Camera)
 
-**Pocket Camera** — an offline-first Android camera app.
+Offline-first Android camera prototype, written in Kotlin with Jetpack Compose, CameraX and Camera2 interop.
 
-## Current state
-Early prototype (v0.2). CameraX preview and basic photo capture are implemented in source. The shutter long-press mode wheel is experimental. Pro, Video, Portrait and Night camera features are not implemented yet. Builds and device behavior require verification.
+## Current stage: v0.5 — not production-ready
 
-## Stack
-- Kotlin, Jetpack Compose, Material 3 dynamic colors
-- CameraX and Camera2 integration planned
-- Future offline OpenCV and on-device ML
+- Live CameraX preview, photo capture, video recording, lens switching and tap-to-focus.
+- Pro controls for supported Camera2 ISO, exposure time, focus, white balance presets and exposure compensation.
+- Curved zoom/mode controls and four-tab settings in a graphite/silver/orange design.
+- CameraX Night and Portrait names currently share the ordinary photo pipeline because OEM extensions are disabled. These are **not verified night/portrait processing modes**.
+- Video recording currently has no microphone permission or audio-enabled recorder configuration: do **not** advertise audio recording.
+- Capture mode prioritizes low latency. Highest photo quality and exact photo/video resolutions have not been benchmarked on all devices.
+- Native release performance, frame pacing, UI screenshot fidelity, and device coverage have **not** passed acceptance tests.
 
-## Design
-- Full-screen portrait and landscape camera
-- Minimal circular controls and white shutter
-- Long-press shutter to show radial modes; drag to highlight; release to select and close
-- Optional performance overlay planned
-- Approved Pocam pocket-camera logo is a design reference; production drawable assets not yet integrated
+See [v0.5 acceptance criteria](docs/v0.5-ui-acceptance.md). **Android CI only builds an installable debug APK; it does not establish user-experience quality.**
 
-## Build
-The repository currently does not include a Gradle wrapper. Android CI uses a pinned Gradle 8.11.1 installation. For local builds, install Android Studio and JDK 17, then generate the wrapper with:
+## Technology
+
+- Kotlin, Jetpack Compose, Material 3
+- CameraX 1.4.2, Camera2 interop
+- Device-local capture with no required cloud services or per-photo charges
+
+## Local development
+
+The repository does not currently include a Gradle wrapper. Use Android Studio and JDK 17, or run:
 
 ```sh
-gradle wrapper --gradle-version 8.11.1
-./gradlew :app:assembleDebug
+gradle :app:assembleDebug
 ```
 
-Alternatively use `gradle :app:assembleDebug` with Gradle 8.11.1 installed. Check the [Actions tab](../../actions) for build results.
+GitHub Actions installs Gradle 8.11.1 and creates a downloadable debug APK artifact.
 
-## Planned packages
-- `camera/`: capture and device capabilities
-- `domain/model/`: shooting modes and state
-- `ui/components/`: shutter and radial mode wheel
-- `ui/screen/`: immersive camera screen
-- `ui/theme/`: Material You theme
-- `performance/`: supported performance metrics
-- `processing/`: future offline image processing
+## Production prerequisites
+
+Before publishing to Google Play: implement or explicitly disable unverified features, finish real-device manual camera testing, test Android back/navigation and permissions, run release-build profiling on the target phone, add automated behavior/screenshot coverage, verify gallery/export/video files, and provide appropriate store/privacy declarations.

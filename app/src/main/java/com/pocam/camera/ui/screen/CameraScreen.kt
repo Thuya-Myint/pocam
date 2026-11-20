@@ -72,11 +72,13 @@ import android.view.MotionEvent
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.camera.video.Quality
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
@@ -166,6 +168,8 @@ fun CameraScreen() {
     var activeLensId by remember { mutableStateOf<String?>(null) }
     var activeFocalMm by remember { mutableStateOf<Float?>(null) }
     var showProPanel by remember { mutableStateOf(false) }
+    // The design has three distinct states: closed, compact ruler, full presets.
+    var proTrayExpanded by remember { mutableStateOf(false) }
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
     var captureBusy by remember { mutableStateOf(false) }
@@ -177,6 +181,7 @@ fun CameraScreen() {
     var shutterSound by remember { mutableStateOf(preferences.getBoolean("shutter_sound", true)) }
     var videoStabilization by remember { mutableStateOf(preferences.getBoolean("video_stabilization", true)) }
     var headerOpacity by remember { mutableStateOf(preferences.getFloat("header_opacity", .85f)) }
+    var motionEnabled by remember { mutableStateOf(preferences.getBoolean("motion_enabled", true)) }
     LaunchedEffect(videoStabilization) { controller.setVideoStabilizationEnabled(videoStabilization) }
     LaunchedEffect(videoQuality) {
         controller.setVideoQuality(when (videoQuality) {
@@ -189,6 +194,9 @@ fun CameraScreen() {
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
+    // Changing video settings shouldn't tear down and reopen the active preview
+    // while the user is tapping controls on the Settings screen.
+    var pendingVideoRebind by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
     var showMoreExposure by remember { mutableStateOf(false) }
     var focusLocked by remember { mutableStateOf(false) }
@@ -206,6 +214,38 @@ fun CameraScreen() {
         context.getSharedPreferences("pocam", 0).edit()
             .putString("last_media_uri", uri.toString()).apply()
     }
+    // Keep the decoded image cached while Settings is open; don't decode
+    // on every return to the camera controls.
+    val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        initialValue = null, key1 = lastPhoto) {
+        value = withContext(Dispatchers.IO) {
+            lastPhoto?.let { uri ->
+                try {
+                    // Decode near thumbnail size instead of allocating a
+                    // full-resolution photo (which causes GC stalls/OOM).
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        BitmapFactory.decodeStream(stream, null, bounds)
+                    }
+                    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) null
+                    else {
+                        var sample = 1
+                        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 256) {
+                            sample *= 2
+                        }
+                        val options = BitmapFactory.Options().apply {
+                            inSampleSize = sample
+                            inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+                        }
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream, null, options)?.asImageBitmap()
+                        }
+                    }
+                } catch (_: Exception) { null }
+            }
+        }
+    }
+
     var error by remember { mutableStateOf<String?>(null) }
     var editPhoto by remember { mutableStateOf<Uri?>(null) }
     val permissionRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -228,13 +268,39 @@ fun CameraScreen() {
         }
     }
     DisposableEffect(controller, tones) { onDispose { controller.release(); tones.release() } }
+    LaunchedEffect(showSettings, pendingVideoRebind, recordingVideo, mode) {
+        if (!showSettings && pendingVideoRebind &&
+            mode == CameraMode.VIDEO && !recordingVideo) {
+            pendingVideoRebind = false
+            previewView?.let { view ->
+                controller.bind(owner, view, { error = it }, {
+                    cameraGeneration++
+                    exposureRange = controller.exposureRange()
+                    maxZoom = controller.maxZoom()
+                    minZoom = controller.minZoom()
+                }, mode)
+            }
+        }
+    }
+    BackHandler(enabled = showSettings || showProPanel || showMore) {
+        when {
+            showSettings -> showSettings = false
+            showProPanel -> {
+                if (proTrayExpanded) proTrayExpanded = false
+                else showProPanel = false
+            }
+            showMore -> showMore = false
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val availableHeight = maxHeight
         if (permitted) {
             AndroidView(factory = { ctx ->
                 PreviewView(ctx).apply {
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    // SurfaceView-first for lower GPU cost and faster preview frames.
+                    // CameraX falls back automatically when the device requires it.
+                    implementationMode = PreviewView.ImplementationMode.PERFORMANCE
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     previewView = this
                     controller.bind(owner, this, { error = it }, onReady = {
@@ -292,16 +358,16 @@ fun CameraScreen() {
                 )
             })
         }
-        if (crosshairEnabled) {
+        if (!showSettings && crosshairEnabled) {
             Box(Modifier.align(Alignment.Center).size(20.dp),
                 contentAlignment = Alignment.Center) {
                 Text("+", color = Color.White.copy(alpha = .8f), fontSize = 24.sp)
             }
         }
-        if (gridEnabled) {
+        if (!showSettings && gridEnabled) {
             CameraGrid(Modifier.fillMaxSize().padding(top = 80.dp, bottom = 200.dp))
         }
-        focusPoint?.let { point ->
+        if (!showSettings) focusPoint?.let { point ->
             val density = LocalDensity.current
             val reticleSize = with(density) { 64.dp.roundToPx() }
             val viewWidth = with(density) { maxWidth.toPx() }.toInt()
@@ -315,62 +381,64 @@ fun CameraScreen() {
                             (viewWidth - reticleSize).coerceAtLeast(0)),
                         (y.toInt() - reticleSize / 2).coerceIn(0,
                             (viewHeight - reticleSize).coerceAtLeast(0)))
-                })
+                },
+                motionEnabled = motionEnabled, pulseKey = focusSequence)
         }
-        CaptureFlash(captureFlash, Modifier.fillMaxSize())
+        if (!showSettings) CaptureFlash(captureFlash, Modifier.fillMaxSize())
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(PocamPalette.Black.copy(alpha=headerOpacity), RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                .background(PocamPalette.Black.copy(alpha = headerOpacity))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .padding(start = 13.dp, end = 13.dp, top = 8.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp)
-                        .background(Color(0xAA303038), CircleShape)
+                    Box(Modifier.size(38.dp)
+                        .background(Color(0xE923262D), CircleShape)
                         .clickable { showMore = !showMore },
                         contentAlignment = Alignment.Center) {
                         Icon(if (showMore) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                             contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
                             tint = Color.White)
                     }
-                    Row(Modifier.weight(1f).padding(start = 12.dp),
+                    Row(Modifier.weight(1f).padding(start = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("pocam", color = Color.White, fontSize = 21.sp,
+                        Text("pocam", color = Color.White, fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
-                        Text(".", color = PocamPalette.Orange, fontSize = 21.sp,
+                        Text(".", color = PocamPalette.Orange, fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
-                            contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(Modifier.size(38.dp)
+                            .background(Color(0xE923262D), CircleShape)
+                            .clickable {
                                 if (controller.hasTorch()) {
                                     torchEnabled = !torchEnabled
                                     controller.setTorch(torchEnabled)
                                 }
-                            }) {
-                                Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
-                                    contentDescription = "Toggle torch",
-                                    tint = if (torchEnabled) accent else Color.White)
-                            }
+                            }, contentAlignment = Alignment.Center) {
+                            Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                                contentDescription = "Toggle torch",
+                                tint = if (torchEnabled) accent else Color.White,
+                                modifier = Modifier.size(21.dp))
                         }
-                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
-                            contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
+                        Box(Modifier.size(38.dp)
+                            .background(Color(0xE923262D), CircleShape)
+                            .clickable {
                                 gridEnabled = !gridEnabled
                                 preferences.edit().putBoolean("grid", gridEnabled).apply()
-                            }) {
-                                Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
-                                    tint = if (gridEnabled) accent else Color.White)
-                            }
+                            }, contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
+                                tint = if (gridEnabled) accent else Color.White,
+                                modifier = Modifier.size(21.dp))
                         }
-                        Box(Modifier.size(44.dp).background(Color(0xAA303038), CircleShape),
+                        Box(Modifier.size(38.dp)
+                            .background(Color(0xE923262D), CircleShape)
+                            .clickable { showMore = false; showSettings = true },
                             contentAlignment = Alignment.Center) {
-                            IconButton(onClick = { showMore = false; showSettings = true }) {
-                                Icon(Icons.Rounded.Tune, contentDescription = "Open settings page",
-                                    tint = Color.White)
-                            }
+                            Icon(Icons.Rounded.Tune, contentDescription = "Open settings page",
+                                tint = Color.White, modifier = Modifier.size(21.dp))
                         }
                     }
                 }
@@ -391,7 +459,7 @@ fun CameraScreen() {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(Modifier.size(52.dp)
-                                        .background(if(selected) PocamPalette.Orange.copy(alpha=.18f)
+                                        .background(if(selected) PocamPalette.Orange.copy(alpha = .18f)
                                             else PocamPalette.Graphite,CircleShape)
                                         .clickable(onClick=onClick),
                                         contentAlignment = Alignment.Center) {
@@ -431,31 +499,35 @@ fun CameraScreen() {
                                     controller.setExposure(exposureIndex)
                                 },
                                 label="${exposureIndex} EV steps",
-                                onDetent={playUiTone()}
+                                onDetent={playUiTone()},
+                                darkOnLight = false
                             )
                         }
                     }
                 }
             }
             Box(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(top = 166.dp).background(Color(0x77303842), CircleShape)
-                .padding(horizontal = 13.dp, vertical = 5.dp)) {
-                Text(mode.name, color = accent, fontSize = 10.sp,
+                // Compact outlined badge directly below the header, like the approved design.
+                .padding(top = 77.dp)
+                .background(Color(0xE916181E), CircleShape)
+                .border(.75.dp, PocamPalette.Orange.copy(alpha = .5f), CircleShape)
+                .padding(horizontal = 14.dp, vertical = 4.dp)) {
+                Text(mode.name, color = PocamPalette.Orange, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
         }
-        // Dedicated full-screen settings page, not a floating dropdown.
-        AnimatedVisibility(visible = showSettings,
-            enter = slideInVertically(animationSpec = tween(190), initialOffsetY = { it / 8 }) + fadeIn(tween(160)),
-            exit = slideOutVertically(animationSpec = tween(150), targetOffsetY = { it / 8 }) + fadeOut(tween(130)),
-            modifier = Modifier.fillMaxSize().zIndex(30f)) {
-            Column(Modifier.fillMaxSize()
+        // Render settings as a fixed opaque page. Sliding and fading the entire
+        // settings tree over a live camera SurfaceView causes large GPU overdraw
+        // and frame skips on some Android devices. Immediate navigation is cheaper.
+        if (showSettings) {
+            Box(Modifier.fillMaxSize().zIndex(30f)
                 .background(PocamPalette.Carbon)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).navigationBarsPadding()) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp)) {
-            ViewfinderSettings(
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .navigationBarsPadding()) {
+                // ViewfinderSettings owns a fixed header/tabs and a separate
+                // scrollable content region. The camera surface stays untouched.
+                ViewfinderSettings(
                 grid = gridEnabled,
                 onGrid = { gridEnabled = it; preferences.edit().putBoolean("grid", it).apply() },
                 level = crosshairEnabled,
@@ -476,11 +548,7 @@ fun CameraScreen() {
                     videoStabilization = value
                     controller.setVideoStabilizationEnabled(value)
                     preferences.edit().putBoolean("video_stabilization",value).apply()
-                    if (!recordingVideo && mode == CameraMode.VIDEO) {
-                        previewView?.let { view ->
-                            controller.bind(owner,view,{error=it},{cameraGeneration++},mode)
-                        }
-                    }
+                    if (mode == CameraMode.VIDEO) pendingVideoRebind = true
                 },
                 headerOpacity = headerOpacity,
                 onHeaderOpacity = { value ->
@@ -493,25 +561,45 @@ fun CameraScreen() {
                 onVideoQuality = { selected ->
                     videoQuality = selected
                     preferences.edit().putString("video_quality", selected).apply()
-                    if (!recordingVideo && mode == CameraMode.VIDEO) {
-                        previewView?.let { view -> controller.bind(owner, view, { error = it }, { cameraGeneration++ }, mode) }
-                    }
+                    controller.setVideoQuality(when (selected) {
+                        "4K" -> Quality.UHD
+                        "720p" -> Quality.HD
+                        else -> Quality.FHD
+                    })
+                    if (mode == CameraMode.VIDEO) pendingVideoRebind = true
                 },
                 onTimer = {
                     timerSeconds = it
                     preferences.edit().putInt("timer", it).apply()
                 },
-                onClose = { showSettings = false }
-            )
-                }
+                motionEnabled = motionEnabled,
+                onMotionEnabled = { enabled ->
+                    motionEnabled = enabled
+                    preferences.edit().putBoolean("motion_enabled", enabled).apply()
+                },
+                onClose = { showSettings = false },
+                modifier = Modifier.fillMaxSize()
+                )
             }
         }
-        // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
+        // Flat UI: a single light bottom deck behind native Compose controls.
+        // Solid translucent fill avoids blur and SurfaceView compositing costs.
+        if (!showSettings && editPhoto == null) {
+            Box(
+                Modifier.align(Alignment.BottomCenter).zIndex(8f)
+                    .fillMaxWidth().height(265.dp)
+                    .background(
+                        Color(0xF0121318),
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    )
+            )
+        }
+        // Horizontal transparent zoom ruler above the compact flat mode strip.
         if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 355.dp else 295.dp, start = 22.dp, end = 22.dp)) {
+                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 285.dp else 180.dp, start = 18.dp, end = 18.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -566,20 +654,20 @@ fun CameraScreen() {
                 exposureIndex = exposureIndex,
                 exposureStepEv = controller.exposureStepEv(),
                 expanded = showProPanel,
-                onExpanded = { showProPanel = it },
+                onExpanded = { open ->
+                    if (open && !showProPanel) proTrayExpanded = false
+                    showProPanel = open
+                },
                 modifier = Modifier.align(Alignment.TopEnd).zIndex(14f)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = 118.dp, end = 14.dp)
+                    // Slim 51dp rail starts directly below the compact top header.
+                    .padding(top = if (showMore) 210.dp else 90.dp, end = 12.dp),
+                motionEnabled = motionEnabled
             )
         }
-        AnimatedVisibility(
-            visible = mode == CameraMode.PRO && showProPanel && !showSettings && editPhoto == null,
-            enter = fadeIn(tween(150)) + slideInVertically(tween(190)) { it / 5 },
-            exit = fadeOut(tween(110)) + slideOutVertically(tween(150)) { it / 5 },
-            modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
-                .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, bottom = 140.dp)
-        ) {
+        // A compact Pro tray should respond immediately, not animate a translucent
+        // layout across the live preview while rebuilding Camera2 controls.
+        if (mode == CameraMode.PRO && showProPanel && !showSettings && editPhoto == null) {
             ProParameterTray(
                 state = proState,
                 controller = controller,
@@ -588,8 +676,13 @@ fun CameraScreen() {
                 exposureRange = exposureRange,
                 exposureStepEv = controller.exposureStepEv(),
                 onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
-                onCollapse = { showProPanel = false },
-                modifier = Modifier.heightIn(max = 196.dp)
+                expanded = proTrayExpanded,
+                onDetailsToggle = { proTrayExpanded = !proTrayExpanded },
+                motionEnabled = motionEnabled,
+                modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
+                    .navigationBarsPadding()
+                    .padding(start = 13.dp, end = 13.dp, bottom = 111.dp)
+                    .heightIn(max = 167.dp)
             )
         }
 
@@ -598,9 +691,10 @@ fun CameraScreen() {
         if (!showSettings && editPhoto == null && !(mode == CameraMode.PRO && showProPanel)) {
             CurvedModeSelector(
                 selected = mode,
+                motionEnabled = motionEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
                     .navigationBarsPadding()
-                    .padding(start = 18.dp, end = 18.dp, bottom = 150.dp),
+                    .padding(start = 14.dp, end = 14.dp, bottom = 121.dp),
                 onSelect = { candidate ->
                     if (candidate != mode && !captureBusy && !recordingVideo) {
                         previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -625,12 +719,13 @@ fun CameraScreen() {
         }
         // Transparent floating controls over the edge-to-edge camera preview.
         // Keep the shutter's footprint fixed so the wheel cannot resize the dock.
+        if (!showSettings && editPhoto == null) {
         Row(Modifier.align(Alignment.BottomCenter).zIndex(10f).fillMaxWidth()
-            .navigationBarsPadding().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 20.dp),
+            .navigationBarsPadding().padding(start = 17.dp, end = 17.dp, top = 8.dp, bottom = 13.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp)
-                .background(Color(0xCC323640), CircleShape)
+            Box(Modifier.size(43.dp)
+                .background(Color(0xE923262D), CircleShape)
                 .clickable(enabled = lastPhoto != null) {
                     lastPhoto?.let { uri ->
                         if (uri.toString().contains("/video/")) {
@@ -643,38 +738,21 @@ fun CameraScreen() {
                         } else editPhoto = uri
                     }
                 }, contentAlignment = Alignment.Center) {
-                val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
-                    initialValue = null, key1 = lastPhoto) {
-                    value = withContext(Dispatchers.IO) {
-                        lastPhoto?.let { uri ->
-                            try {
-                                context.contentResolver.openInputStream(uri)?.use { stream ->
-                                    BitmapFactory.decodeStream(stream)?.let { bitmap ->
-                                        val scale = 128f / maxOf(bitmap.width, bitmap.height)
-                                        val scaled = android.graphics.Bitmap.createScaledBitmap(
-                                            bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1),
-                                            (bitmap.height * scale).toInt().coerceAtLeast(1), true)
-                                        scaled.asImageBitmap()
-                                    }
-                                }
-                            } catch (_: Exception) { null }
-                        }
-                    }
-                }
                 if (thumbnail != null) {
                     Image(bitmap = thumbnail!!, contentDescription = "Last captured photo",
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().clip(CircleShape))
                 } else {
                     Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
-                        tint = if (lastPhoto == null) Color.LightGray else Color.White)
+                        tint = Color.White)
                 }
             }
             // Keep shutter fixed and separate from the curved, tappable mode selector.
-            Box(Modifier.size(88.dp),
+            Box(Modifier.size(74.dp),
                 contentAlignment = Alignment.Center) {
 
                 ShutterButton(busy = captureBusy, recording = recordingVideo,
+                    motionEnabled = motionEnabled,
                     onSound = { if (shutterSound) playUiTone() },
                     onCapture = {
                         if (captureBusy) return@ShutterButton
@@ -727,8 +805,8 @@ fun CameraScreen() {
                             .offset(y = (-14).dp))
                 }
             }
-            Box(Modifier.size(52.dp)
-                .background(Color(0xCC323640), CircleShape)
+            Box(Modifier.size(43.dp)
+                .background(Color(0xE923262D), CircleShape)
                 .clickable(enabled = !captureBusy && !recordingVideo) {
                     showSettings = false
                     showProPanel = false
@@ -752,7 +830,8 @@ fun CameraScreen() {
                     tint = Color.White)
             }
         }
-        if (recordingVideo) {
+        }
+        if (recordingVideo && !showSettings) {
             Text("● REC  ·  TAP SHUTTER TO STOP", color = Color(0xFFFF7777),
                 fontWeight = FontWeight.Bold, fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 170.dp)

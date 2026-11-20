@@ -1,158 +1,107 @@
 package com.pocam.camera.ui.components
 
-import android.graphics.Paint
-import android.graphics.Typeface
-import android.os.Build
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pocam.camera.domain.model.CameraMode
-import kotlin.math.atan
-import kotlin.math.min
 
 /**
- * One geometry for the ribbon, its labels, and its selection. Both ends gently
- * fade out. The active indicator follows the curve instead of sitting on a Row.
+ * Minimal charcoal mode strip with soft left/right alpha feathering.
+ * The small offscreen layer is confined to this 52dp bar, never the camera
+ * preview. Inactive labels stay high-contrast; selected mode uses Pocam orange.
  */
 @Composable
 fun CurvedModeSelector(
     selected: CameraMode,
     hovered: CameraMode? = null,
     onSelect: (CameraMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    motionEnabled: Boolean = true
 ) {
-    val accent = PocamPalette.Orange
-    val modes = remember {
-        listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
-            CameraMode.PRO, CameraMode.PORTRAIT)
-    }
-    val activeIndex = modes.indexOf(hovered ?: selected).coerceAtLeast(0)
-    val animatedIndex by animateFloatAsState(
-        targetValue = activeIndex.toFloat(),
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "mode-selection"
+    val modes = listOf(
+        CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
+        CameraMode.PRO, CameraMode.PORTRAIT
     )
-    val latestSelect by rememberUpdatedState(onSelect)
-    val latestSelected by rememberUpdatedState(selected)
+    val current = hovered ?: selected
     val haptics = LocalHapticFeedback.current
 
-    Canvas(modifier.fillMaxWidth().height(116.dp)
-        .pointerInput(Unit) {
-            detectTapGestures { offset ->
-                val index = ((offset.x / size.width.toFloat().coerceAtLeast(1f)) * modes.size)
-                    .toInt().coerceIn(0, modes.lastIndex)
-                if (modes[index] != latestSelected) {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    latestSelect(modes[index])
-                }
+    Row(
+        modifier.fillMaxWidth()
+            .height(52.dp)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        .12f to Color.Black,
+                        .88f to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
             }
-        }) {
-        val pad = 4.dp.toPx()
-        val trackWidth = (size.width - pad * 2f).coerceAtLeast(1f)
-        val curveHeight = 41.dp.toPx()
-        val top = 7.dp.toPx()
-        val band = 48.dp.toPx()
-        fun arc(t: Float): Float =
-            top + curveHeight * 4f * (t - .5f) * (t - .5f)
-
-        val ribbon = Path().apply {
-            moveTo(pad, arc(0f))
-            for (i in 1..80) {
-                val fraction = i / 80f
-                lineTo(pad + trackWidth * fraction, arc(fraction))
-            }
-            for (i in 80 downTo 0) {
-                val fraction = i / 80f
-                lineTo(pad + trackWidth * fraction, arc(fraction) + band)
-            }
-            close()
-        }
-        drawPath(ribbon, Brush.horizontalGradient(
-            0f to Color.Transparent,
-            .12f to Color(0xB11A1C24),
-            .50f to Color(0xC61A1C24),
-            .88f to Color(0xB11A1C24),
-            1f to Color.Transparent
-        ))
-
-        fun itemCenter(index: Float): Offset {
-            val fraction = ((index + .5f) / modes.size).coerceIn(0f, 1f)
-            return Offset(pad + trackWidth * fraction, arc(fraction) + band / 2f)
-        }
-        fun itemAngle(index: Float): Float {
-            val fraction = ((index + .5f) / modes.size).coerceIn(0f, 1f)
-            return Math.toDegrees(
-                atan((8f * curveHeight * (fraction - .5f) / trackWidth).toDouble())
-            ).toFloat()
-        }
-
-        val selectionCenter = itemCenter(animatedIndex)
-        val pillWidth = (trackWidth / modes.size * 0.93f)
-            .coerceAtMost(86.dp.toPx())
-        val pillHeight = 36.dp.toPx()
-        rotate(itemAngle(animatedIndex), selectionCenter) {
-            drawRoundRect(
-                color = accent.copy(alpha = .95f),
-                topLeft = Offset(
-                    selectionCenter.x - pillWidth / 2f,
-                    selectionCenter.y - pillHeight / 2f
-                ),
-                size = Size(pillWidth, pillHeight),
-                cornerRadius = CornerRadius(pillHeight / 2f)
+            .background(Color(0xEE15181E), RoundedCornerShape(24.dp))
+            .padding(horizontal = 4.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        modes.forEach { mode ->
+            val active = mode == current
+            val fill by animateColorAsState(
+                targetValue = if (active) PocamPalette.Orange else Color.Transparent,
+                animationSpec = if (motionEnabled) tween(140) else snap(),
+                label = "flat-mode-selection"
             )
-        }
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textAlign = Paint.Align.CENTER
-            textSize = 11.sp.toPx()
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        }
-        val native = drawContext.canvas.nativeCanvas
-        modes.forEachIndexed { index, candidate ->
-            val center = itemCenter(index.toFloat())
-            val fade = (min((index + .5f) / modes.size,
-                1f - (index + .5f) / modes.size) * 6f).coerceIn(.35f, 1f)
-            paint.color =
-                if (candidate == (hovered ?: selected)) Color.Black.toArgb()
-                else Color.White.toArgb()
-            paint.alpha = (255f * fade).toInt()
-            val save = native.save()
-            native.rotate(itemAngle(index.toFloat()), center.x, center.y)
-            native.drawText(
-                candidate.name,
-                center.x,
-                center.y - (paint.ascent() + paint.descent()) / 2f,
-                paint
+            val foreground by animateColorAsState(
+                targetValue = if (active) PocamPalette.Black else Color.White,
+                animationSpec = if (motionEnabled) tween(140) else snap(),
+                label = "flat-mode-text"
             )
-            native.restoreToCount(save)
+            Box(
+                Modifier.weight(1f).height(42.dp)
+                    .background(fill, RoundedCornerShape(20.dp))
+                    .clickable {
+                        if (mode != selected) {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSelect(mode)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    mode.name,
+                    color = foreground,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

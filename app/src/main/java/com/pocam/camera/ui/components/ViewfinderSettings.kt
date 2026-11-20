@@ -1,16 +1,20 @@
 package com.pocam.camera.ui.components
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -18,14 +22,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Pocam v0.5 — real camera settings in a unified graphite/steel/orange UI. */
+private val paper = Color(0xFF0E1015)
+private val ink = Color.White
+private val secondaryInk = Color(0xFF9AA1AD)
+private val hairline = Color(0xFF333740)
+private val idleControl = Color(0xFF2C3039)
+private val cardSurface = Color(0xFF1A1D24)
+
+/** Fully native, flat Settings screen. No blur or full-screen transitions. */
 @Composable
 fun ViewfinderSettings(
     grid: Boolean, onGrid: (Boolean) -> Unit,
@@ -37,240 +49,338 @@ fun ViewfinderSettings(
     shutterSound: Boolean, onShutterSound: (Boolean) -> Unit,
     headerOpacity: Float, onHeaderOpacity: (Float) -> Unit,
     exposure: Int, exposureRange: IntRange, onExposure: (Int) -> Unit,
+    motionEnabled: Boolean, onMotionEnabled: (Boolean) -> Unit,
     onClose: () -> Unit, modifier: Modifier = Modifier
 ) {
-    var tab by remember { mutableStateOf("Capture") }
-    val orange = PocamPalette.Orange
-    Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(17.dp)) {
-        Row(Modifier.fillMaxWidth()
-            .background(PocamPalette.GlassLight, RoundedCornerShape(28.dp))
-            .border(1.dp, PocamPalette.Steel.copy(alpha=.38f), RoundedCornerShape(28.dp))
-            .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(46.dp).background(PocamPalette.Graphite, CircleShape)
-                .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
-                Icon(Icons.Rounded.Close,contentDescription="Return to camera",tint=Color.White)
+    val tabs = remember { listOf("Camera", "Video", "General", "About") }
+    var tab by remember { mutableStateOf("Camera") }
+    var draftOpacity by remember { mutableFloatStateOf(headerOpacity) }
+    val contentScroll = rememberScrollState()
+
+    LaunchedEffect(tab) { contentScroll.scrollTo(0) }
+
+    Column(modifier.fillMaxSize().background(paper)) {
+        Row(
+            Modifier.fillMaxWidth().background(paper)
+                .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(40.dp)
+                    .background(idleControl, CircleShape)
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.ArrowBack, "Close Settings", tint = ink,
+                    modifier = Modifier.size(20.dp))
             }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Settings",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.Bold)
-                Text("POCAM  ·  CAMERA",color=PocamPalette.Silver,
-                    fontSize=10.sp,letterSpacing=1.sp)
-            }
-            Box(Modifier.size(46.dp).background(PocamPalette.Graphite,CircleShape),
-                contentAlignment=Alignment.Center) {
-                Icon(Icons.Rounded.Tune,contentDescription=null,tint=orange)
-            }
+            Spacer(Modifier.width(10.dp))
+            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                color = ink, modifier = Modifier.weight(1f))
         }
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            listOf("Capture","Camera","Video","Appearance").forEach { section ->
-                val selected=section==tab
-                Box(Modifier.weight(1f).background(
-                    if(selected)orange else PocamPalette.Graphite,CircleShape)
-                    .clickable { tab=section }.padding(vertical=12.dp),
-                    contentAlignment=Alignment.Center) {
-                    Text(section,fontSize=11.sp,
-                        color=if(selected)PocamPalette.Black else Color.White,
-                        fontWeight=FontWeight.SemiBold)
+
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val icons = listOf(Icons.Rounded.PhotoCamera, Icons.Rounded.Videocam,
+                Icons.Rounded.Settings, Icons.Rounded.Info)
+            tabs.forEachIndexed { index, title ->
+                val active = tab == title
+                val fill by animateColorAsState(
+                    targetValue = if (active) PocamPalette.Orange else cardSurface,
+                    animationSpec = if (motionEnabled) tween(140) else snap(),
+                    label = "settings-tab-fill"
+                )
+                val textColor by animateColorAsState(
+                    targetValue = if (active) PocamPalette.Black else ink,
+                    animationSpec = if (motionEnabled) tween(140) else snap(),
+                    label = "settings-tab-ink"
+                )
+                Column(
+                    Modifier.weight(1f).height(71.dp)
+                        .background(fill, RoundedCornerShape(19.dp))
+                        .clickable { if (tab != title) tab = title },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(icons[index], null, tint = textColor,
+                        modifier = Modifier.size(21.dp))
+                    Spacer(Modifier.height(5.dp))
+                    Text(title, color = textColor, fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium)
                 }
             }
         }
-        AnimatedContent(targetState=tab,transitionSpec={
-            fadeIn(tween(145)) togetherWith fadeOut(tween(110))
-        },label="settings-tabs") { selected ->
-            Column(verticalArrangement=Arrangement.spacedBy(17.dp)) {
-                when(selected) {
-                    "Capture" -> {
-                        SettingsSection("Capture",Icons.Rounded.PhotoLibrary) {
-                            SettingsInfo(Icons.Rounded.PhotoLibrary,"Photo resolution",
-                                "Highest stable quality available on device")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Image,"Image format",
-                                "JPEG  ·  maximum compatibility")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"HDR",
-                                "Uses device extensions in supported modes")
-                            SettingsSeparator()
-                            SettingsSwitch(Icons.Rounded.GridOn,"Grid lines",
-                                "Rule-of-thirds guide",grid,onGrid)
-                            SettingsSeparator()
-                            SettingsSwitch(Icons.Rounded.CenterFocusStrong,"Center guide",
-                                "Composition crosshair",level,onLevel)
-                        }
-                        SettingsSection("Capture timer",Icons.Rounded.Timer) {
-                            Row(Modifier.fillMaxWidth().padding(vertical=6.dp),
-                                horizontalArrangement=Arrangement.SpaceBetween) {
-                                listOf(0,3,5,10).forEach { value ->
-                                    val active=timer==value
-                                    Box(Modifier.size(57.dp).background(
-                                        if(active)orange else PocamPalette.Graphite,CircleShape)
-                                        .clickable { onTimer(value) },contentAlignment=Alignment.Center) {
-                                        Text(if(value==0)"OFF" else "${value}s",
-                                            fontSize=12.sp,fontWeight=FontWeight.Bold,
-                                            color=if(active)PocamPalette.Black else Color.White)
-                                    }
-                                }
+
+        Column(
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(contentScroll)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            when (tab) {
+                "Camera" -> {
+                    SettingsGroup("Capture") {
+                        FlatToggle(Icons.Rounded.GridOn, "Grid lines", null,
+                            grid, onGrid, motionEnabled = motionEnabled)
+                        FlatDivider()
+                        FlatToggle(Icons.Rounded.CenterFocusStrong, "Center guide", null,
+                            level, onLevel, motionEnabled = motionEnabled)
+                        FlatDivider()
+                        FlatToggle(Icons.Rounded.VolumeUp, "Shutter sound", null,
+                            shutterSound, onShutterSound, motionEnabled = motionEnabled)
+                    }
+                    SettingsGroup("Photo") {
+                        FlatInfo(Icons.Rounded.AspectRatio, "Photo resolution", "Automatic")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.Image, "Image format", "JPEG")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.Tune, "HDR extension", "Disabled in v0.5")
+                    }
+                    SettingsGroup("Capture timer") {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            listOf(0, 3, 5, 10).forEach { seconds ->
+                                FlatChip(
+                                    label = if (seconds == 0) "OFF" else "${seconds}s",
+                                    selected = timer == seconds, motionEnabled = motionEnabled,
+                                    modifier = Modifier.weight(1f)
+                                ) { onTimer(seconds) }
                             }
                         }
                     }
-                    "Camera" -> {
-                        SettingsSection("Camera",Icons.Rounded.Tune) {
-                            SettingsSwitch(Icons.Rounded.FlashOn,"Live torch",
-                                if(torchAvailable)"Illuminate the preview" else "Flash not available on this camera",
-                                torch,onTorch,enabled=torchAvailable)
-                            SettingsSeparator()
-                            SettingsSwitch(Icons.Rounded.VolumeUp,"Shutter sound",
-                                "Play a capture confirmation tone",shutterSound,onShutterSound)
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.CenterFocusStrong,"Touch focus",
-                                "Tap preview to focus · hold to lock")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"Focus tracking",
-                                "Not available in this build")
-                        }
-                        SettingsSection("Exposure compensation",Icons.Rounded.Tune) {
-                            if(exposureRange.first>=exposureRange.last) {
-                                Text("Unavailable on this camera",color=PocamPalette.Silver,fontSize=13.sp)
-                            } else {
-                                Text("EV steps: $exposure",color=Color.White,fontSize=13.sp)
-                                StraightRuler(exposure.toFloat(),
-                                    exposureRange.first.toFloat()..exposureRange.last.toFloat(),
-                                    { v -> onExposure(v.roundToInt().coerceIn(exposureRange)) },
-                                    "$exposure")
-                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                                    SettingsChip("RESET",exposure==0) { onExposure(0.coerceIn(exposureRange)) }
+                }
+                "Video" -> {
+                    SettingsGroup("Recording") {
+                        FlatInfo(Icons.Rounded.Videocam, "Resolution", videoQuality)
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            listOf("720p", "1080p", "4K").forEach { quality ->
+                                FlatChip(quality, videoQuality == quality, motionEnabled,
+                                    Modifier.weight(1f)) {
+                                    if (quality != videoQuality) onVideoQuality(quality)
                                 }
                             }
+                        }
+                        FlatDivider()
+                        FlatToggle(Icons.Rounded.Videocam, "Video stabilization",
+                            "Applies where supported", videoStabilization,
+                            onVideoStabilization, motionEnabled = motionEnabled)
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.Tune, "Frame rate", "Auto")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.Movie, "Video codec", "Device managed")
+                    }
+                }
+                "General" -> {
+                    SettingsGroup("Controls") {
+                        FlatToggle(Icons.Rounded.FlashOn, "Live torch",
+                            if (torchAvailable) null else "Unavailable on this lens",
+                            torch, onTorch, torchAvailable, motionEnabled)
+                        FlatDivider()
+                        FlatToggle(Icons.Rounded.AutoAwesome, "Motion & animation",
+                            "Smooth, lightweight control feedback",
+                            motionEnabled, onMotionEnabled, motionEnabled = motionEnabled)
+                    }
+                    SettingsGroup("Appearance") {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Color accents", fontSize = 13.sp, color = ink,
+                                    fontWeight = FontWeight.Medium)
+                                Text("Charcoal, white and Pocam orange",
+                                    fontSize = 10.sp, color = secondaryInk)
+                            }
+                            listOf(PocamPalette.Carbon, PocamPalette.Silver, PocamPalette.Orange).forEach { color ->
+                                Box(Modifier.padding(start = 6.dp).size(24.dp)
+                                    .background(color, CircleShape)
+                                    .border(.7.dp, hairline, CircleShape))
+                            }
+                        }
+                        FlatDivider()
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Header opacity", color = ink, fontSize = 13.sp)
+                                Text("${(draftOpacity * 100).roundToInt()}%",
+                                    color = secondaryInk, fontSize = 12.sp)
+                            }
+                            Slider(
+                                value = draftOpacity,
+                                onValueChange = { draftOpacity = it },
+                                onValueChangeFinished = { onHeaderOpacity(draftOpacity) },
+                                valueRange = .45f..1f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = PocamPalette.Orange,
+                                    activeTrackColor = PocamPalette.Orange,
+                                    inactiveTrackColor = hairline
+                                )
+                            )
                         }
                     }
-                    "Video" -> {
-                        SettingsSection("Video",Icons.Rounded.Videocam) {
-                            SettingsInfo(Icons.Rounded.Videocam,"Video resolution",
-                                "Selected: $videoQuality  ·  device may use supported fallback")
-                            Spacer(Modifier.height(8.dp))
-                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                listOf("720p","1080p","4K").forEach { quality ->
-                                    Box(Modifier.weight(1f).background(
-                                        if(quality==videoQuality)orange else PocamPalette.Graphite,CircleShape)
-                                        .clickable { onVideoQuality(quality) }
-                                        .padding(vertical=11.dp),contentAlignment=Alignment.Center) {
-                                        Text(quality,color=if(quality==videoQuality)PocamPalette.Black
-                                            else Color.White,fontWeight=FontWeight.Bold,fontSize=12.sp)
-                                    }
+                    SettingsGroup("Exposure") {
+                        if (exposureRange.first < exposureRange.last) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Row(Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Exposure compensation", color = ink, fontSize = 13.sp)
+                                    Text("${exposure} steps", color = secondaryInk, fontSize = 11.sp)
                                 }
+                                Slider(
+                                    value = exposure.toFloat(),
+                                    onValueChange = {
+                                        onExposure(it.roundToInt().coerceIn(exposureRange))
+                                    },
+                                    valueRange = exposureRange.first.toFloat()..
+                                        exposureRange.last.toFloat(),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = PocamPalette.Orange, activeTrackColor = PocamPalette.Orange,
+                                        inactiveTrackColor = hairline
+                                    )
+                                )
                             }
-                            SettingsSeparator()
-                            SettingsSwitch(Icons.Rounded.Videocam,"Video stabilization",
-                                "Request smoother video where supported",
-                                videoStabilization,onVideoStabilization)
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"Frame rate",
-                                "Automatic  ·  selected by camera hardware")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"Video codec",
-                                "Managed by Android's recorder")
+                        } else {
+                            FlatInfo(Icons.Rounded.Tune, "Exposure", "Not supported")
                         }
                     }
-                    else -> {
-                        SettingsSection("Studio appearance",Icons.Rounded.Tune) {
-                            Row(verticalAlignment=Alignment.CenterVertically,
-                                horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                                listOf(
-                                    PocamPalette.Black,PocamPalette.Graphite,
-                                    PocamPalette.Silver,PocamPalette.Orange
-                                ).forEach { swatch ->
-                                    Box(Modifier.size(36.dp).background(swatch,CircleShape)
-                                        .border(1.dp,PocamPalette.Steel,CircleShape))
-                                }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Text("Fixed studio palette  ·  Orange / Black / Gray / Silver",
-                                fontSize=12.sp,color=PocamPalette.Silver)
-                            SettingsSeparator()
-                            Text("Camera header opacity",color=Color.White,fontWeight=FontWeight.Medium)
-                            Slider(value=headerOpacity,onValueChange=onHeaderOpacity,
-                                valueRange=.45f..1f,colors=SliderDefaults.colors(
-                                    thumbColor=orange,activeTrackColor=orange,
-                                    inactiveTrackColor=PocamPalette.Steel))
-                            Text("${(headerOpacity*100).roundToInt()}%  ·  adjusts the preview header",
-                                fontSize=12.sp,color=PocamPalette.Silver)
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.GridOn,"Control layout",
-                                "Curved zoom and mode selector  ·  fixed")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"UI animations",
-                                "Fast fade and slide transitions")
-                        }
-                        SettingsSection("Advanced tools",Icons.Rounded.Tune) {
-                            SettingsInfo(Icons.Rounded.Tune,"RAW DNG / Histogram",
-                                "Planned  ·  not yet available")
-                            SettingsSeparator()
-                            SettingsInfo(Icons.Rounded.Tune,"Focus peaking / Zebra",
-                                "Planned  ·  not yet available")
-                        }
+                }
+                else -> {
+                    SettingsGroup("Pocam") {
+                        FlatInfo(Icons.Rounded.Info, "App version", "v0.5 preview")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.Lock, "Processing", "On-device only")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.CloudOff, "Cloud account", "Not required")
+                    }
+                    SettingsGroup("Work in progress") {
+                        FlatInfo(Icons.Rounded.NightsStay, "Night / Portrait",
+                            "Special processing not yet implemented")
+                        FlatDivider()
+                        FlatInfo(Icons.Rounded.MicOff, "Video audio",
+                            "Not yet implemented")
                     }
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
     }
 }
+
 @Composable
-private fun SettingsSection(
-    title:String, icon:ImageVector, content:@Composable ColumnScope.()->Unit
+private fun SettingsGroup(
+    title: String, content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(verticalArrangement=Arrangement.spacedBy(9.dp)) {
-        Row(Modifier.padding(start=10.dp),verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            Icon(icon,null,tint=PocamPalette.Orange,modifier=Modifier.size(20.dp))
-            Text(title,color=Color.White,fontWeight=FontWeight.SemiBold,fontSize=15.sp)
-        }
-        Column(Modifier.fillMaxWidth().background(
-            PocamPalette.GlassLight,RoundedCornerShape(26.dp))
-            .border(1.dp,PocamPalette.Steel.copy(alpha=.22f),RoundedCornerShape(26.dp))
-            .padding(horizontal=17.dp,vertical=10.dp),content=content)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 4.dp))
+        Column(
+            Modifier.fillMaxWidth().background(cardSurface, RoundedCornerShape(16.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            content = content
+        )
     }
 }
+
 @Composable
-private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),
-        verticalAlignment=Alignment.CenterVertically) {
-        Icon(icon,null,tint=PocamPalette.Silver,modifier=Modifier.size(23.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(name,color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
-            Text(description,color=PocamPalette.Silver,fontSize=11.sp)
-        }
-    }
+private fun FlatDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 47.dp, end = 10.dp),
+        color = hairline, thickness = .7.dp
+    )
 }
+
 @Composable
-private fun SettingsSwitch(icon:ImageVector,name:String,description:String,
-    value:Boolean,onChange:(Boolean)->Unit,enabled:Boolean=true) {
-    Row(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
-        Icon(icon,null,tint=if(enabled)PocamPalette.Silver else PocamPalette.Steel,
-            modifier=Modifier.size(23.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(name,color=if(enabled)Color.White else PocamPalette.Steel,
-                fontSize=14.sp,fontWeight=FontWeight.Medium)
-            Text(description,color=PocamPalette.Silver,fontSize=11.sp)
-        }
-        Switch(checked=value,onCheckedChange=onChange,enabled=enabled,
-            colors=SwitchDefaults.colors(
-                checkedTrackColor=PocamPalette.Orange,
-                checkedThumbColor=Color.White,
-                uncheckedTrackColor=PocamPalette.Graphite,
-                uncheckedThumbColor=PocamPalette.Silver
-            ))
+private fun FlatInfo(icon: ImageVector, title: String, status: String) {
+    Row(
+        Modifier.fillMaxWidth().defaultMinSize(minHeight = 54.dp)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(13.dp))
+        Text(title, color = ink, fontSize = 13.sp,
+            fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(10.dp))
+        Text(status, color = secondaryInk, fontSize = 11.sp, maxLines = 2)
     }
 }
-@Composable private fun SettingsSeparator(){
-    HorizontalDivider(color=PocamPalette.Steel.copy(alpha=.23f))
+
+@Composable
+private fun FlatToggle(
+    icon: ImageVector, title: String, description: String?,
+    value: Boolean, onChange: (Boolean) -> Unit,
+    enabled: Boolean = true, motionEnabled: Boolean = true
+) {
+    val source = remember { MutableInteractionSource() }
+    val thumb by animateFloatAsState(
+        targetValue = if (value) 1f else 0f,
+        animationSpec = if (motionEnabled) tween(140, easing = FastOutSlowInEasing)
+            else snap(),
+        label = "flat-toggle-thumb"
+    )
+    Row(
+        Modifier.fillMaxWidth().defaultMinSize(minHeight = 54.dp)
+            .toggleable(
+                value = value,
+                onValueChange = onChange,
+                enabled = enabled, role = Role.Switch,
+                interactionSource = source, indication = null
+            )
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = if (enabled) ink else secondaryInk,
+            modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (enabled) ink else secondaryInk,
+                fontWeight = FontWeight.Medium, fontSize = 13.sp)
+            if (description != null) {
+                Text(description, color = secondaryInk, fontSize = 10.sp)
+            }
+        }
+        Box(
+            Modifier.width(42.dp).height(24.dp)
+                .background(if (value) PocamPalette.Orange else idleControl, CircleShape)
+                .padding(3.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                Modifier.size(18.dp)
+                    .graphicsLayer { translationX = 18.dp.toPx() * thumb }
+                    .background(if (value) Color.White else Color.White, CircleShape)
+            )
+        }
+    }
 }
-@Composable private fun SettingsChip(label:String,selected:Boolean,onClick:()->Unit){
-    Box(Modifier.background(if(selected)PocamPalette.Orange else PocamPalette.Graphite,CircleShape)
-        .clickable(onClick=onClick).padding(horizontal=14.dp,vertical=8.dp),
-        contentAlignment=Alignment.Center) {
-        Text(label,color=if(selected)PocamPalette.Black else Color.White,fontSize=11.sp)
+
+@Composable
+private fun FlatChip(
+    label: String, selected: Boolean,
+    motionEnabled: Boolean, modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val fill by animateColorAsState(
+        targetValue = if (selected) PocamPalette.Orange else idleControl,
+        animationSpec = if (motionEnabled) tween(130) else snap(),
+        label = "flat-chip-background"
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) PocamPalette.Black else ink,
+        animationSpec = if (motionEnabled) tween(130) else snap(),
+        label = "flat-chip-text"
+    )
+    Box(
+        modifier.height(40.dp)
+            .background(fill, RoundedCornerShape(19.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = textColor, fontWeight = FontWeight.Medium, fontSize = 11.sp)
     }
 }

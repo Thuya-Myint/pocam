@@ -2,6 +2,10 @@ package com.pocam.camera.ui.components
 
 import android.hardware.camera2.CaptureRequest
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,10 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -24,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +63,7 @@ fun ProControlRail(
     state: ProUiState, controller: CameraController, cameraGeneration: Int,
     exposureIndex: Int, exposureStepEv: Float,
     expanded: Boolean, onExpanded: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier, motionEnabled: Boolean = true
 ) {
     val caps = remember(controller, cameraGeneration) { controller.manualCapabilities() }
     val isoRange = caps?.isoRange
@@ -79,39 +82,53 @@ fun ProControlRail(
         "FOCUS" to (if (state.focusAuto) "AF" else "MF"),
         "EV" to String.format(Locale.US, "%+.1f", exposureIndex * exposureStepEv)
     )
+    // Pencil-thin control rail; fixed cell heights make every row line up.
+    val chevronRotation = animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = if (motionEnabled) tween(155) else snap(),
+        label = "pocam-pro-chevron"
+    )
+    val railShape = RoundedCornerShape(25.dp)
     Column(
-        modifier.width(62.dp).background(PocamPalette.Glass, RoundedCornerShape(27.dp))
-            .border(1.dp, PocamPalette.Steel.copy(alpha = .55f), RoundedCornerShape(27.dp))
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+        modifier.width(51.dp)
+            .background(Color(0xEB17191F), railShape)
+            .border(0.75.dp, PocamPalette.Steel.copy(alpha = .56f), railShape)
+            .padding(horizontal = 3.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         labels.forEach { (key, value) ->
             val active = (if (state.selected == "SHUTTER") "S" else state.selected) == key
+            val activeFill by animateColorAsState(
+                targetValue = if (active) PocamPalette.Orange.copy(alpha = .15f) else Color.Transparent,
+                animationSpec = if (motionEnabled) tween(145) else snap(),
+                label = "pocam-pro-rail-highlight"
+            )
             Column(
-                Modifier.fillMaxWidth()
-                    .background(if (active) PocamPalette.Orange.copy(alpha=.16f)
-                        else Color.Transparent, RoundedCornerShape(20.dp))
-                    .border(if (active) 1.dp else 0.dp,
-                        if (active) PocamPalette.Orange else Color.Transparent,
-                        RoundedCornerShape(20.dp))
+                Modifier.fillMaxWidth().height(58.dp)
+                    .background(activeFill, CircleShape)
+                    .border(if (active) .65.dp else 0.dp,
+                        if (active) PocamPalette.Orange else Color.Transparent, CircleShape)
                     .clickable {
                         state.selected = if (key == "S") "SHUTTER" else key
                         onExpanded(true)
-                    }.padding(vertical = 5.dp),
+                    },
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(key, color = if (active) PocamPalette.Orange else PocamPalette.Silver,
-                    fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                Text(value, color = if (active) PocamPalette.OrangeSoft else Color.White,
-                    fontSize = 9.sp, maxLines = 1)
+                Text(key, color = if (active) PocamPalette.Orange else Color.White,
+                    fontWeight = FontWeight.Medium, fontSize = 9.sp, maxLines = 1)
+                Spacer(Modifier.height(3.dp))
+                Text(value, color = if (active) PocamPalette.OrangeSoft else PocamPalette.Silver,
+                    fontSize = 8.sp, maxLines = 1)
             }
             Spacer(Modifier.height(2.dp))
         }
-        Box(Modifier.fillMaxWidth().height(31.dp).clickable { onExpanded(!expanded) },
+        Box(Modifier.fillMaxWidth().height(25.dp).clickable { onExpanded(!expanded) },
             contentAlignment = Alignment.Center) {
-            Icon(if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+            Icon(Icons.Rounded.KeyboardArrowDown,
                 contentDescription = if (expanded) "Collapse Pro adjustment tray" else "Expand Pro adjustment tray",
-                tint = PocamPalette.Silver, modifier = Modifier.size(20.dp))
+                tint = Color.White, modifier = Modifier.size(18.dp)
+                    .graphicsLayer { rotationZ = chevronRotation.value })
         }
     }
 }
@@ -120,38 +137,66 @@ fun ProControlRail(
 fun ProParameterTray(
     state: ProUiState, controller: CameraController, cameraGeneration: Int,
     exposureIndex: Int, exposureRange: IntRange, exposureStepEv: Float,
-    onExposure: (Int) -> Unit, onCollapse: () -> Unit,
-    modifier: Modifier = Modifier
+    onExposure: (Int) -> Unit,
+    expanded: Boolean, onDetailsToggle: () -> Unit,
+    modifier: Modifier = Modifier, motionEnabled: Boolean = true
 ) {
     val caps = remember(controller, cameraGeneration) { controller.manualCapabilities() }
     val active = state.selected
+    val enter = remember { Animatable(if (motionEnabled) 0f else 1f) }
+    val bodyFade = remember { Animatable(1f) }
+    LaunchedEffect(motionEnabled) {
+        if (motionEnabled) enter.animateTo(1f, tween(155))
+        else enter.snapTo(1f)
+    }
+    LaunchedEffect(active, motionEnabled) {
+        if (motionEnabled) {
+            bodyFade.snapTo(.9f)
+            bodyFade.animateTo(1f, tween(125))
+        } else bodyFade.snapTo(1f)
+    }
     Column(
-        modifier.fillMaxWidth().background(PocamPalette.Glass, RoundedCornerShape(25.dp))
-            .border(1.dp, PocamPalette.Steel.copy(alpha=.45f), RoundedCornerShape(25.dp))
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+        modifier.fillMaxWidth()
+            .graphicsLayer {
+                alpha = enter.value
+                translationY = 7.dp.toPx() * (1f - enter.value)
+            }
+            .background(Color(0xF3191B22), RoundedCornerShape(18.dp))
+            .border(.75.dp, PocamPalette.Steel.copy(alpha=.55f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp),
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically) {
             listOf("ISO", "SHUTTER", "WB", "FOCUS", "EV").forEach { item ->
                 val selected = active == item
                 Box(Modifier.weight(1f)
-                    .background(if (selected) PocamPalette.Orange else PocamPalette.Graphite,
-                        CircleShape)
+                    .background(if (selected) PocamPalette.Orange.copy(alpha = .16f)
+                        else Color.Transparent, CircleShape)
+                    .border(0.dp, Color.Transparent, CircleShape)
                     .clickable { state.selected = item }
-                    .padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
+                    .height(29.dp), contentAlignment = Alignment.Center) {
                     Text(if (item == "SHUTTER") "S" else item, fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (selected) PocamPalette.Black else Color.White)
+                        fontWeight = FontWeight.Medium,
+                        color = if (selected) PocamPalette.Orange else Color.White)
                 }
             }
-            Box(Modifier.size(30.dp).background(PocamPalette.Graphite, CircleShape)
-                .clickable(onClick=onCollapse), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.KeyboardArrowDown, "Close adjustment tray",
-                    tint = Color.White, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(25.dp).background(PocamPalette.Graphite, CircleShape)
+                .clickable(onClick = onDetailsToggle),
+                contentAlignment = Alignment.Center) {
+                Icon(
+                    if (expanded) Icons.Rounded.KeyboardArrowDown
+                    else Icons.Rounded.KeyboardArrowUp,
+                    contentDescription = if (expanded) "Show compact Pro controls"
+                        else "Show all Pro presets",
+                    tint = Color.White, modifier = Modifier.size(17.dp)
+                )
             }
         }
+        Column(
+            Modifier.graphicsLayer { alpha = bodyFade.value },
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
         when(active) {
             "ISO" -> {
                 val range = caps?.isoRange
@@ -168,9 +213,9 @@ fun ProParameterTray(
                             state.isoFraction = fraction
                             state.isoAuto = false
                             controller.setManualIso(isoAt(range, fraction))
-                        }, showLabel = false, compact = true
+                        }, showLabel = false, compact = true, darkOnLight = false
                     )
-                    PresetRow(
+                    if (expanded) PresetRow(
                         listOf("AUTO", "100", "200", "400", "800"),
                         active=if(state.isoAuto) "AUTO" else value.toString()
                     ) { preset ->
@@ -201,8 +246,8 @@ fun ProParameterTray(
                             state.shutterFraction=f
                             state.shutterAuto=false
                             controller.setManualExposureNs(shutterAt(range,f))
-                        }, showLabel = false, compact = true)
-                    PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
+                        }, showLabel = false, compact = true, darkOnLight = false)
+                    if (expanded) PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
                         active=if(state.shutterAuto) "AUTO" else shutterLabel(ns)) { preset ->
                         if(preset=="AUTO") { state.shutterFraction=0f; state.shutterAuto=true; controller.setManualExposureNs(null) }
                         else {
@@ -243,8 +288,8 @@ fun ProParameterTray(
                             state.focusAuto=false
                             controller.setManualFocus(f*distance)
                         },if(state.focusAuto) "AF" else "MF",
-                        showLabel = false, compact = true)
-                    PresetRow(listOf("AUTO","MANUAL"),
+                        showLabel = false, compact = true, darkOnLight = false)
+                    if (expanded) PresetRow(listOf("AUTO","MANUAL"),
                         if(state.focusAuto)"AUTO" else "MANUAL") { choice ->
                         state.focusAuto=choice=="AUTO"
                         controller.setManualFocus(
@@ -263,27 +308,30 @@ fun ProParameterTray(
                         { value ->
                             val next=value.roundToInt().coerceIn(exposureRange)
                             if(next!=exposureIndex)onExposure(next)
-                        },label, showLabel = false, compact = true)
+                        },label, showLabel = false, compact = true, darkOnLight = false)
                 }
             }
+        }
         }
     }
 }
 
 @Composable
 private fun NotSupported(message:String) {
-    Text(message,color=PocamPalette.Silver,fontSize=13.sp,modifier=Modifier.padding(vertical=18.dp))
+    Text(message,color=PocamPalette.Silver,fontSize=11.sp,modifier=Modifier.padding(vertical=10.dp))
 }
 @Composable
 private fun PresetRow(presets:List<String>,active:String,onChoose:(String)->Unit) {
-    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
         presets.forEach { label ->
-            Box(Modifier.weight(1f).background(
-                if(label==active)PocamPalette.Orange else PocamPalette.Graphite,CircleShape)
-                .clickable{onChoose(label)}.padding(vertical=7.dp),
+            Box(Modifier.weight(1f)
+                .background(if(label==active)PocamPalette.Orange.copy(alpha = .18f)
+                    else PocamPalette.Graphite,CircleShape)
+                .border(0.dp,Color.Transparent,CircleShape)
+                .clickable{onChoose(label)}.padding(vertical=6.dp),
                 contentAlignment=Alignment.Center) {
-                Text(label,fontSize=10.sp,fontWeight=FontWeight.Bold,
-                    color=if(label==active)PocamPalette.Black else Color.White)
+                Text(label,fontSize=9.sp,fontWeight=FontWeight.Medium,
+                    color=if(label==active)PocamPalette.Orange else Color.White)
             }
         }
     }

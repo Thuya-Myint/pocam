@@ -1,5 +1,9 @@
 package com.pocam.camera.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,12 +13,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -23,23 +32,36 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The shutter performs ONLY capture / start-stop video. Camera mode selection
- * is exclusively controlled by tapping the curved mode selector.
+ * is exclusively controlled by tapping the flat mode selector.
  */
 @Composable
 fun ShutterButton(
     busy: Boolean = false,
     recording: Boolean = false,
     onCapture: () -> Unit,
-    onSound: () -> Unit = {}
+    onSound: () -> Unit = {},
+    motionEnabled: Boolean = true
 ) {
     val haptics = LocalHapticFeedback.current
     val latestCapture by rememberUpdatedState(onCapture)
     val latestSound by rememberUpdatedState(onSound)
+    val shutterScale = remember { Animatable(1f) }
+    var pulse by remember { mutableIntStateOf(0) }
+    LaunchedEffect(pulse, motionEnabled) {
+        if (motionEnabled && pulse > 0) {
+            shutterScale.snapTo(1f)
+            shutterScale.animateTo(.90f, tween(65))
+            shutterScale.animateTo(1f, spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ))
+        } else shutterScale.snapTo(1f)
+    }
 
     Box(
-        Modifier.size(88.dp)
-            .border(3.dp, PocamPalette.Orange.copy(alpha=.95f), CircleShape)
-            .background(Color(0xFF202126), CircleShape)
+        Modifier.size(74.dp)
+            .border(2.5.dp, PocamPalette.Orange, CircleShape)
+            .background(PocamPalette.Graphite, CircleShape)
             .semantics {
                 contentDescription = if (recording) "Stop recording"
                     else if (busy) "Saving photo"
@@ -47,16 +69,21 @@ fun ShutterButton(
             }
             .clickable(enabled = !busy) {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (motionEnabled) pulse++
                 latestSound()
                 latestCapture()
             },
         contentAlignment = Alignment.Center
     ) {
         Box(
-            Modifier.size(if (recording) 40.dp else 70.dp)
+            Modifier.size(if (recording) 34.dp else 58.dp)
+                .graphicsLayer {
+                    scaleX = shutterScale.value
+                    scaleY = shutterScale.value
+                }
                 .background(
                     if (recording) Brush.linearGradient(listOf(Color(0xFFE43A1D),PocamPalette.Orange))
-                    else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF6F6F6))),
+                    else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF7F8FA))),
                     if (recording) RoundedCornerShape(12.dp) else CircleShape
                 )
         )
