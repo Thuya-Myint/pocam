@@ -191,6 +191,9 @@ fun CameraScreen() {
     var crosshairEnabled by remember { mutableStateOf(preferences.getBoolean("crosshair", false)) }
     var gridEnabled by remember { mutableStateOf(preferences.getBoolean("grid", false)) }
     var showSettings by remember { mutableStateOf(false) }
+    // Changing video settings shouldn't tear down and reopen the active preview
+    // while the user is tapping controls on the Settings screen.
+    var pendingVideoRebind by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
     var showMoreExposure by remember { mutableStateOf(false) }
     var focusLocked by remember { mutableStateOf(false) }
@@ -262,6 +265,20 @@ fun CameraScreen() {
         }
     }
     DisposableEffect(controller, tones) { onDispose { controller.release(); tones.release() } }
+    LaunchedEffect(showSettings, pendingVideoRebind, recordingVideo, mode) {
+        if (!showSettings && pendingVideoRebind &&
+            mode == CameraMode.VIDEO && !recordingVideo) {
+            pendingVideoRebind = false
+            previewView?.let { view ->
+                controller.bind(owner, view, { error = it }, {
+                    cameraGeneration++
+                    exposureRange = controller.exposureRange()
+                    maxZoom = controller.maxZoom()
+                    minZoom = controller.minZoom()
+                }, mode)
+            }
+        }
+    }
     BackHandler(enabled = showSettings || showProPanel || showMore) {
         when {
             showSettings -> showSettings = false
@@ -364,7 +381,7 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(PocamPalette.Black.copy(alpha=headerOpacity), RoundedCornerShape(bottomStart = 19.dp, bottomEnd = 19.dp))
+                .background(PocamPalette.Black.copy(alpha=headerOpacity))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .padding(start = 13.dp, end = 13.dp, top = 8.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -522,11 +539,7 @@ fun CameraScreen() {
                     videoStabilization = value
                     controller.setVideoStabilizationEnabled(value)
                     preferences.edit().putBoolean("video_stabilization",value).apply()
-                    if (!recordingVideo && mode == CameraMode.VIDEO) {
-                        previewView?.let { view ->
-                            controller.bind(owner,view,{error=it},{cameraGeneration++},mode)
-                        }
-                    }
+                    if (mode == CameraMode.VIDEO) pendingVideoRebind = true
                 },
                 headerOpacity = headerOpacity,
                 onHeaderOpacity = { value ->
@@ -539,9 +552,12 @@ fun CameraScreen() {
                 onVideoQuality = { selected ->
                     videoQuality = selected
                     preferences.edit().putString("video_quality", selected).apply()
-                    if (!recordingVideo && mode == CameraMode.VIDEO) {
-                        previewView?.let { view -> controller.bind(owner, view, { error = it }, { cameraGeneration++ }, mode) }
-                    }
+                    controller.setVideoQuality(when (selected) {
+                        "4K" -> Quality.UHD
+                        "720p" -> Quality.HD
+                        else -> Quality.FHD
+                    })
+                    if (mode == CameraMode.VIDEO) pendingVideoRebind = true
                 },
                 onTimer = {
                     timerSeconds = it
