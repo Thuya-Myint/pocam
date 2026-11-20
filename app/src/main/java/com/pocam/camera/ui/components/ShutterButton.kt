@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The shutter performs ONLY capture / start-stop video. Camera mode selection
- * is exclusively controlled by tapping the curved mode selector.
+ * is exclusively controlled by tapping the flat mode selector.
  */
 @Composable
 fun ShutterButton(
@@ -60,8 +60,8 @@ fun ShutterButton(
 
     Box(
         Modifier.size(74.dp)
-            .border(2.5.dp, PocamPalette.Orange.copy(alpha=.97f), CircleShape)
-            .background(Color(0xFF202126), CircleShape)
+            .border(3.dp, Color(0xFF24272D), CircleShape)
+            .background(Color(0xFFF9FAFB), CircleShape)
             .semantics {
                 contentDescription = if (recording) "Stop recording"
                     else if (busy) "Saving photo"
@@ -83,7 +83,7 @@ fun ShutterButton(
                 }
                 .background(
                     if (recording) Brush.linearGradient(listOf(Color(0xFFE43A1D),PocamPalette.Orange))
-                    else Brush.linearGradient(listOf(Color.White,PocamPalette.Silver,Color(0xFFF6F6F6))),
+                    else Brush.linearGradient(listOf(Color.White,Color(0xFFF1F2F4),Color.White)),
                     if (recording) RoundedCornerShape(12.dp) else CircleShape
                 )
         )
