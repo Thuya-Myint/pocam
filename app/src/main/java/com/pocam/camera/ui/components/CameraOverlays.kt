@@ -103,7 +103,7 @@ fun FocusReticle(
  * The scale has NO fill or rectangular glass strip: only rounded curve, ticks
  * and the handle. Cached track/tick geometry stays stable while dragging.
  */
-/** Flat, transparent zoom ruler: no custom curved ribbon or filled band. */
+/** Transparent zoom scale on black with a smooth symmetric left/right end fade. */
 @Composable
 fun ZoomRail(
     selected: Float, minZoom: Float = 1f, maxZoom: Float, onSelect: (Float) -> Unit,
@@ -166,11 +166,23 @@ fun ZoomRail(
                     val tickPositions = (0..60).map { i ->
                         pad + usable * i / 60f
                     }
-                    val charcoal = Color(0xFF313740)
-                    val muted = Color(0xFF969DA5)
+                    val tickMajor = Color.White
+                    val tickMinor = Color(0xFFB7BBC4)
+                    val fadeStart = .14f
+                    fun edgeAlpha(fraction: Float): Float {
+                        val edge = kotlin.math.min(fraction, 1f - fraction)
+                        val t = (edge / fadeStart).coerceIn(0f, 1f)
+                        return t * t * (3f - 2f * t)
+                    }
+                    val baselineBrush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        .14f to Color.White.copy(alpha = .22f),
+                        .86f to Color.White.copy(alpha = .22f),
+                        1f to Color.Transparent
+                    )
                     onDrawBehind {
                         drawLine(
-                            color = Color(0x447B828B),
+                            brush = baselineBrush,
                             start = Offset(pad, centerY),
                             end = Offset(pad + usable, centerY),
                             strokeWidth = .7.dp.toPx(),
@@ -179,20 +191,24 @@ fun ZoomRail(
                         tickPositions.forEachIndexed { i, x ->
                             val major = i % 10 == 0
                             val length = (if (major) 13 else 6).dp.toPx()
-                            drawLine(
-                                color = if (major) charcoal else muted,
-                                start = Offset(x, centerY - length / 2f),
-                                end = Offset(x, centerY + length / 2f),
-                                strokeWidth = (if (major) 1.4f else .85f).dp.toPx(),
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
+                            val alpha = edgeAlpha(i / 60f)
+                            if (alpha > 0f) {
+                                drawLine(
+                                    color = (if (major) tickMajor else tickMinor)
+                                        .copy(alpha = alpha * if (major) .88f else .68f),
+                                    start = Offset(x, centerY - length / 2f),
+                                    end = Offset(x, centerY + length / 2f),
+                                    strokeWidth = (if (major) 1.4f else .85f).dp.toPx(),
+                                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                )
+                            }
                         }
+                        // Handle is intentionally not faded: it remains visible at 1x.
                         val f = ((zoomState.floatValue - minZoom) /
                             (maximum - minZoom)).coerceIn(0f, 1f)
                         val point = Offset(pad + usable * f, centerY)
-                        drawCircle(Color.White, 8.5.dp.toPx(), point)
-                        drawCircle(charcoal, 8.5.dp.toPx(), point,
-                            style = Stroke(width = 1.6.dp.toPx()))
+                        drawCircle(PocamPalette.Orange, 8.5.dp.toPx(), point)
+                        drawCircle(Color.White, 5.8.dp.toPx(), point)
                     }
                 }
         )
@@ -202,13 +218,13 @@ fun ZoomRail(
 @Composable
 private fun ZoomValuePill(valueState: androidx.compose.runtime.State<Float>) {
     Box(
-        Modifier.background(Color(0xF8F9FAFB), CircleShape)
-            .border(.7.dp, Color(0x334D545D), CircleShape)
+        Modifier.background(Color(0xEA17191E), CircleShape)
+            .border(.7.dp, Color.White.copy(alpha = .27f), CircleShape)
             .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         Text(
             String.format(java.util.Locale.US, "%.1f×", valueState.value),
-            color = Color(0xFF24272D),
+            color = Color.White,
             fontWeight = FontWeight.SemiBold, fontSize = 11.sp
         )
     }
