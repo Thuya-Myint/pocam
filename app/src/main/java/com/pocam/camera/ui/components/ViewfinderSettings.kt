@@ -38,6 +38,9 @@ fun ViewfinderSettings(
     onClose: () -> Unit, modifier: Modifier = Modifier
 ) {
     var tab by remember { mutableStateOf("Capture") }
+    // Settings covers the camera. Editing this slider should never recompose
+    // the full CameraScreen or persist a preference on each drag pixel.
+    var draftHeaderOpacity by remember { mutableFloatStateOf(headerOpacity) }
     val orange = PocamPalette.Orange
     Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(12.dp)) {
         // Keep the Settings header flat like the camera's reference header.
@@ -148,7 +151,7 @@ fun ViewfinderSettings(
                                 listOf("720p","1080p","4K").forEach { quality ->
                                     Box(Modifier.weight(1f).background(
                                         if(quality==videoQuality)orange else PocamPalette.Graphite,CircleShape)
-                                        .clickable { onVideoQuality(quality) }
+                                        .clickable { if (quality != videoQuality) onVideoQuality(quality) }
                                         .padding(vertical=11.dp),contentAlignment=Alignment.Center) {
                                         Text(quality,color=if(quality==videoQuality)PocamPalette.Black
                                             else Color.White,fontWeight=FontWeight.Bold,fontSize=12.sp)
@@ -186,11 +189,14 @@ fun ViewfinderSettings(
                                 fontSize=12.sp,color=PocamPalette.Silver)
                             SettingsSeparator()
                             Text("Camera header opacity",color=Color.White,fontWeight=FontWeight.Medium)
-                            Slider(value=headerOpacity,onValueChange=onHeaderOpacity,
+                            Slider(
+                                value=draftHeaderOpacity,
+                                onValueChange={ draftHeaderOpacity = it },
+                                onValueChangeFinished={ onHeaderOpacity(draftHeaderOpacity) },
                                 valueRange=.45f..1f,colors=SliderDefaults.colors(
                                     thumbColor=orange,activeTrackColor=orange,
                                     inactiveTrackColor=PocamPalette.Steel))
-                            Text("${(headerOpacity*100).roundToInt()}%  ·  adjusts the preview header",
+                            Text("${(draftHeaderOpacity*100).roundToInt()}%  ·  adjusts the preview header",
                                 fontSize=12.sp,color=PocamPalette.Silver)
                             SettingsSeparator()
                             SettingsInfo(Icons.Rounded.GridOn,"Control layout",
