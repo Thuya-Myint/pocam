@@ -2,6 +2,10 @@ package com.pocam.camera.ui.components
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,15 +35,16 @@ import kotlin.math.atan
 
 /**
  * Pocam reference selector: a thin continuous quadratic ribbon with five
- * equally spaced modes. No tween-driven redraw on a live camera surface.
- * Path, brush, label positions and native Paint are cached.
+ * equally spaced modes. Its selected pill glides on the cached path,
+ * without animating the preview or remeasuring the screen.
  */
 @Composable
 fun CurvedModeSelector(
     selected: CameraMode,
     hovered: CameraMode? = null,
     onSelect: (CameraMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    motionEnabled: Boolean = true
 ) {
     val modes = remember {
         listOf(CameraMode.VIDEO, CameraMode.NIGHT, CameraMode.PHOTO,
@@ -47,6 +52,13 @@ fun CurvedModeSelector(
     }
     val active = hovered ?: selected
     val activeIndex = modes.indexOf(active).coerceAtLeast(0)
+    // Only the orange selection pill glides; the expensive ribbon geometry
+    // stays cached and the camera preview is never animated or rebound.
+    val animatedIndex by animateFloatAsState(
+        targetValue = activeIndex.toFloat(),
+        animationSpec = if (motionEnabled) tween(190, easing = FastOutSlowInEasing) else snap(),
+        label = "pocam-mode-glide"
+    )
     val latestSelect by rememberUpdatedState(onSelect)
     val latestSelected by rememberUpdatedState(selected)
     val haptics = LocalHapticFeedback.current
@@ -81,7 +93,7 @@ fun CurvedModeSelector(
                     val f = (index + .5f) / modes.size
                     return Offset(pad + width * f, y(f) + band/2f)
                 }
-                fun rotation(index: Int): Float {
+                fun rotation(index: Float): Float {
                     val f = (index + .5f) / modes.size
                     return Math.toDegrees(
                         atan((rise * 8f * (f - .5f) / width).toDouble())
@@ -95,7 +107,7 @@ fun CurvedModeSelector(
                     close()
                 }
                 val centers = modes.indices.map(::center)
-                val angles = modes.indices.map(::rotation)
+                val angles = modes.indices.map { rotation(it.toFloat()) }
                 val brush = Brush.horizontalGradient(
                     0f to Color(0x2D101115),
                     .12f to Color(0xB313151B),
@@ -106,10 +118,14 @@ fun CurvedModeSelector(
 
                 onDrawBehind {
                     drawPath(ribbon, brush)
-                    val selectedCenter = centers[activeIndex]
+                    val movingFraction = ((animatedIndex + .5f) / modes.size).coerceIn(0f, 1f)
+                    val selectedCenter = Offset(
+                        pad + width * movingFraction,
+                        y(movingFraction) + band / 2f
+                    )
                     val pillWidth = (width / modes.size * .76f).coerceAtMost(59.dp.toPx())
                     val pillHeight = 27.dp.toPx()
-                    rotate(angles[activeIndex], selectedCenter) {
+                    rotate(rotation(animatedIndex), selectedCenter) {
                         drawRoundRect(
                             color = PocamPalette.Orange,
                             topLeft = Offset(selectedCenter.x - pillWidth / 2f,
