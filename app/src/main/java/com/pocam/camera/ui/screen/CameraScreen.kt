@@ -449,7 +449,7 @@ fun CameraScreen() {
                 ) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("QUICK CONTROLS", color = PocamPalette.Orange,
+                        Text("QUICK CONTROLS", color = Color(0xFF252830),
                             fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             @Composable
@@ -459,15 +459,15 @@ fun CameraScreen() {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(Modifier.size(52.dp)
-                                        .background(if(selected) PocamPalette.Orange.copy(alpha=.18f)
-                                            else PocamPalette.Graphite,CircleShape)
+                                        .background(if(selected) Color(0xFF252830)
+                                            else Color.White,CircleShape)
                                         .clickable(onClick=onClick),
                                         contentAlignment = Alignment.Center) {
                                         Icon(icon, contentDescription=label,
-                                            tint=if(selected)PocamPalette.Orange else Color.White,
+                                            tint=if(selected)Color.White else Color(0xFF252830),
                                             modifier=Modifier.size(23.dp))
                                     }
-                                    Text(label,color=PocamPalette.Silver,fontSize=10.sp)
+                                    Text(label,color=Color(0xFF505862),fontSize=10.sp)
                                 }
                             }
                             Quick("Torch",torchEnabled,Icons.Rounded.FlashOn) {
@@ -499,7 +499,8 @@ fun CameraScreen() {
                                     controller.setExposure(exposureIndex)
                                 },
                                 label="${exposureIndex} EV steps",
-                                onDetent={playUiTone()}
+                                onDetent={playUiTone()},
+                                darkOnLight = true
                             )
                         }
                     }
