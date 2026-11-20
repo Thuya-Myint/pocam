@@ -121,8 +121,7 @@ fun ViewfinderSettings(
                     label = "settings-tab-text"
                 )
                 Box(
-                    Modifier.weight(1f).height(32.dp)
-                        .background(fill, CircleShape)
+                    Modifier.weight(1f).height(42.dp)
                         .clickable {
                             if (tab != section) {
                                 tab = section
@@ -131,8 +130,14 @@ fun ViewfinderSettings(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(section, color = foreground, fontSize = 10.sp,
-                        maxLines = 1, fontWeight = FontWeight.SemiBold)
+                    Box(
+                        Modifier.fillMaxWidth().height(32.dp)
+                            .background(fill, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(section, color = foreground, fontSize = 10.sp,
+                            maxLines = 1, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
@@ -451,13 +456,17 @@ private fun SettingPill(
         label = "setting-pill-text"
     )
     Box(
-        modifier.height(34.dp)
-            .background(fill, CircleShape)
-            .clickable(onClick = onClick),
+        modifier.height(44.dp).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = foreground, fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold)
+        Box(
+            Modifier.fillMaxWidth().height(34.dp)
+                .background(fill, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(label, color = foreground, fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 
