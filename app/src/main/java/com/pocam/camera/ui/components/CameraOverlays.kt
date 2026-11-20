@@ -103,6 +103,7 @@ fun FocusReticle(
  * The scale has NO fill or rectangular glass strip: only rounded curve, ticks
  * and the handle. Cached track/tick geometry stays stable while dragging.
  */
+/** Flat, transparent zoom ruler: no custom curved ribbon or filled band. */
 @Composable
 fun ZoomRail(
     selected: Float, minZoom: Float = 1f, maxZoom: Float, onSelect: (Float) -> Unit,
@@ -119,20 +120,19 @@ fun ZoomRail(
         zoomState.floatValue = selected.coerceIn(minZoom, maxZoom.coerceAtLeast(minZoom))
     }
     val maximum = maxZoom.coerceAtLeast(minZoom + .01f)
-
     Column(
         modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         ZoomValuePill(zoomState)
         Box(
-            Modifier.fillMaxWidth().height(82.dp)
+            Modifier.fillMaxWidth().height(42.dp)
                 .pointerInput(minZoom, maximum) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         fun update(x: Float) {
-                            val pad = 22.dp.toPx()
+                            val pad = 18.dp.toPx()
                             val fraction = ((x - pad) /
                                 (size.width - 2f * pad).coerceAtLeast(1f)).coerceIn(0f, 1f)
                             val next = minZoom + (maximum - minZoom) * fraction
@@ -160,58 +160,39 @@ fun ZoomRail(
                     }
                 }
                 .drawWithCache {
-                    val pad = 22.dp.toPx()
-                    val usable = (size.width - 2f * pad).coerceAtLeast(1f)
-                    val baseline = size.height * .76f
-                    val rise = 30.dp.toPx()
-                    fun arcY(f: Float) = baseline - rise * 4f * f * (1f - f)
-
-                    // One exact quadratic with rounded caps. This is a line,
-                    // not a filled ribbon or a masked rectangular background.
-                    val guide = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(pad, baseline)
-                        quadraticBezierTo(size.width / 2f, baseline - 2f * rise,
-                            pad + usable, baseline)
+                    val pad = 18.dp.toPx()
+                    val usable = (size.width - pad * 2f).coerceAtLeast(1f)
+                    val centerY = size.height * .53f
+                    val tickPositions = (0..60).map { i ->
+                        pad + usable * i / 60f
                     }
-                    val ticks = (0..68).map { index ->
-                        val f = index / 68f
-                        Offset(pad + usable * f, arcY(f))
-                    }
-                    val tickStroke = .9.dp.toPx()
-                    val majorStroke = 1.45.dp.toPx()
-                    val handleOuter = 8.8.dp.toPx()
-                    val handleInner = 5.1.dp.toPx()
-
+                    val charcoal = Color(0xFF313740)
+                    val muted = Color(0xFF969DA5)
                     onDrawBehind {
-                        // Fine rounded baseline; deliberately no dark zoom bar.
-                        drawPath(
-                            guide, Color.White.copy(alpha = .16f),
-                            style = Stroke(width = .85.dp.toPx(),
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        drawLine(
+                            color = Color(0x447B828B),
+                            start = Offset(pad, centerY),
+                            end = Offset(pad + usable, centerY),
+                            strokeWidth = .7.dp.toPx(),
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
-                        ticks.forEachIndexed { i, p ->
-                            val f = i / 68f
-                            val edgeFade = (kotlin.math.min(f, 1f - f) * 8f)
-                                .coerceIn(0f, 1f)
-                            if (edgeFade > 0f) {
-                                val major = i % 10 == 0 || i == 34
-                                val height = (if (major) 17.dp else 8.dp).toPx()
-                                drawLine(
-                                    color = Color.White.copy(alpha =
-                                        (if (major) .88f else .66f) * edgeFade),
-                                    start = Offset(p.x, p.y - height / 2f),
-                                    end = Offset(p.x, p.y + height / 2f),
-                                    strokeWidth = if (major) majorStroke else tickStroke,
-                                    cap = androidx.compose.ui.graphics.StrokeCap.Round
-                                )
-                            }
+                        tickPositions.forEachIndexed { i, x ->
+                            val major = i % 10 == 0
+                            val length = (if (major) 13 else 6).dp.toPx()
+                            drawLine(
+                                color = if (major) charcoal else muted,
+                                start = Offset(x, centerY - length / 2f),
+                                end = Offset(x, centerY + length / 2f),
+                                strokeWidth = (if (major) 1.4f else .85f).dp.toPx(),
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
                         }
                         val f = ((zoomState.floatValue - minZoom) /
                             (maximum - minZoom)).coerceIn(0f, 1f)
-                        val point = Offset(pad + usable * f, arcY(f))
-                        drawCircle(Color.Black.copy(alpha = .42f), handleOuter + 2.dp.toPx(), point)
-                        drawCircle(PocamPalette.Orange, handleOuter, point)
-                        drawCircle(Color.White, handleInner, point)
+                        val point = Offset(pad + usable * f, centerY)
+                        drawCircle(Color.White, 8.5.dp.toPx(), point)
+                        drawCircle(charcoal, 8.5.dp.toPx(), point,
+                            style = Stroke(width = 1.6.dp.toPx()))
                     }
                 }
         )
@@ -220,14 +201,16 @@ fun ZoomRail(
 
 @Composable
 private fun ZoomValuePill(valueState: androidx.compose.runtime.State<Float>) {
-    // A small separate value badge (the zoom ruler itself is transparent).
     Box(
-        Modifier.background(Color(0xD819191D), CircleShape)
-            .border(.65.dp, PocamPalette.Orange.copy(alpha = .4f), CircleShape)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+        Modifier.background(Color(0xF8F9FAFB), CircleShape)
+            .border(.7.dp, Color(0x334D545D), CircleShape)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
-        Text(String.format(java.util.Locale.US, "%.1f×", valueState.value),
-            color = Color.White, fontWeight = FontWeight.Medium, fontSize = 11.sp)
+        Text(
+            String.format(java.util.Locale.US, "%.1f×", valueState.value),
+            color = Color(0xFF24272D),
+            fontWeight = FontWeight.SemiBold, fontSize = 11.sp
+        )
     }
 }
 
