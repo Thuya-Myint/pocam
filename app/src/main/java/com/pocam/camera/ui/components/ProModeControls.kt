@@ -3,6 +3,7 @@ package com.pocam.camera.ui.components
 import android.hardware.camera2.CaptureRequest
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -137,12 +138,29 @@ fun ProParameterTray(
     state: ProUiState, controller: CameraController, cameraGeneration: Int,
     exposureIndex: Int, exposureRange: IntRange, exposureStepEv: Float,
     onExposure: (Int) -> Unit, onCollapse: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier, motionEnabled: Boolean = true
 ) {
     val caps = remember(controller, cameraGeneration) { controller.manualCapabilities() }
     val active = state.selected
+    val enter = remember { Animatable(if (motionEnabled) 0f else 1f) }
+    val bodyFade = remember { Animatable(1f) }
+    LaunchedEffect(motionEnabled) {
+        if (motionEnabled) enter.animateTo(1f, tween(155))
+        else enter.snapTo(1f)
+    }
+    LaunchedEffect(active, motionEnabled) {
+        if (motionEnabled) {
+            bodyFade.snapTo(.9f)
+            bodyFade.animateTo(1f, tween(125))
+        } else bodyFade.snapTo(1f)
+    }
     Column(
-        modifier.fillMaxWidth().background(Color(0xF0181A20), RoundedCornerShape(18.dp))
+        modifier.fillMaxWidth()
+            .graphicsLayer {
+                alpha = enter.value
+                translationY = 7.dp.toPx() * (1f - enter.value)
+            }
+            .background(Color(0xF0181A20), RoundedCornerShape(18.dp))
             .border(0.75.dp, PocamPalette.Steel.copy(alpha=.58f), RoundedCornerShape(18.dp))
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -169,6 +187,10 @@ fun ProParameterTray(
                     tint = Color.White, modifier = Modifier.size(17.dp))
             }
         }
+        Column(
+            Modifier.graphicsLayer { alpha = bodyFade.value },
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
         when(active) {
             "ISO" -> {
                 val range = caps?.isoRange
@@ -283,6 +305,7 @@ fun ProParameterTray(
                         },label, showLabel = false, compact = true)
                 }
             }
+        }
         }
     }
 }
