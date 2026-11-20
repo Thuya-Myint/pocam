@@ -576,10 +576,11 @@ fun CameraScreen() {
                 )
             }
         }
-        // Keep the curved zoom control clear of the shutter and gallery/flip buttons.
+        // Approved reference: transparent zoom arc closely follows the rounded
+        // mode ribbon, with only a small optical gap between both contours.
         if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 290.dp else 208.dp, start = 17.dp, end = 17.dp)) {
+                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 290.dp else 178.dp, start = 13.dp, end = 13.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
