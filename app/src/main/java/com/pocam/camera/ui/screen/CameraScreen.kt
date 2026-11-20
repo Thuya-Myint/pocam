@@ -388,30 +388,30 @@ fun CameraScreen() {
         // Style 4: floating controls. The chevron expands this surface vertically.
         if (!showSettings) {
             Column(Modifier.align(Alignment.TopCenter).zIndex(16f).fillMaxWidth()
-                .background(PocamPalette.Black.copy(alpha=headerOpacity))
+                .background(Color(0xFFF4F5F7).copy(alpha = headerOpacity))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .padding(start = 13.dp, end = 13.dp, top = 8.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(38.dp)
-                        .background(Color(0x991E2027), CircleShape)
+                        .background(Color(0xE9FFFFFF), CircleShape)
                         .clickable { showMore = !showMore },
                         contentAlignment = Alignment.Center) {
                         Icon(if (showMore) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                             contentDescription = if (showMore) "Collapse camera controls" else "Expand camera controls",
-                            tint = Color.White)
+                            tint = Color(0xFF252830))
                     }
                     Row(Modifier.weight(1f).padding(start = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("pocam", color = Color.White, fontSize = 18.sp,
+                        Text("pocam", color = Color(0xFF252830), fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
                         Text(".", color = PocamPalette.Orange, fontSize = 18.sp,
                             fontWeight = FontWeight.Bold)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         Box(Modifier.size(38.dp)
-                            .background(Color(0x991E2027), CircleShape)
+                            .background(Color(0xE9FFFFFF), CircleShape)
                             .clickable {
                                 if (controller.hasTorch()) {
                                     torchEnabled = !torchEnabled
@@ -420,25 +420,25 @@ fun CameraScreen() {
                             }, contentAlignment = Alignment.Center) {
                             Icon(if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
                                 contentDescription = "Toggle torch",
-                                tint = if (torchEnabled) accent else Color.White,
+                                tint = if (torchEnabled) accent else Color(0xFF252830),
                                 modifier = Modifier.size(21.dp))
                         }
                         Box(Modifier.size(38.dp)
-                            .background(Color(0x991E2027), CircleShape)
+                            .background(Color(0xE9FFFFFF), CircleShape)
                             .clickable {
                                 gridEnabled = !gridEnabled
                                 preferences.edit().putBoolean("grid", gridEnabled).apply()
                             }, contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.GridOn, contentDescription = "Toggle grid",
-                                tint = if (gridEnabled) accent else Color.White,
+                                tint = if (gridEnabled) accent else Color(0xFF252830),
                                 modifier = Modifier.size(21.dp))
                         }
                         Box(Modifier.size(38.dp)
-                            .background(Color(0x991E2027), CircleShape)
+                            .background(Color(0xE9FFFFFF), CircleShape)
                             .clickable { showMore = false; showSettings = true },
                             contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.Tune, contentDescription = "Open settings page",
-                                tint = Color.White, modifier = Modifier.size(21.dp))
+                                tint = Color(0xFF252830), modifier = Modifier.size(21.dp))
                         }
                     }
                 }
@@ -508,10 +508,10 @@ fun CameraScreen() {
             Box(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 // Compact outlined badge directly below the header, like the approved design.
                 .padding(top = 77.dp)
-                .background(Color(0xD4181A20), CircleShape)
-                .border(.75.dp, PocamPalette.Orange.copy(alpha=.62f), CircleShape)
+                .background(Color(0xEDFFFFFF), CircleShape)
+                .border(.75.dp, Color(0x88252830), CircleShape)
                 .padding(horizontal = 14.dp, vertical = 4.dp)) {
-                Text(mode.name, color = accent, fontSize = 10.sp,
+                Text(mode.name, color = Color(0xFF252830), fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
 
@@ -521,7 +521,7 @@ fun CameraScreen() {
         // and frame skips on some Android devices. Immediate navigation is cheaper.
         if (showSettings) {
             Box(Modifier.fillMaxSize().zIndex(30f)
-                .background(PocamPalette.Carbon)
+                .background(Color(0xFFF4F5F7))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                 .navigationBarsPadding()) {
                 // ViewfinderSettings owns a fixed header/tabs and a separate
@@ -581,11 +581,22 @@ fun CameraScreen() {
                 )
             }
         }
-        // Approved reference: transparent zoom arc closely follows the rounded
-        // mode ribbon, with only a small optical gap between both contours.
+        // Flat UI: a single light bottom deck behind native Compose controls.
+        // Solid translucent fill avoids blur and SurfaceView compositing costs.
+        if (!showSettings && editPhoto == null) {
+            Box(
+                Modifier.align(Alignment.BottomCenter).zIndex(8f)
+                    .fillMaxWidth().height(265.dp)
+                    .background(
+                        Color(0xEDF4F5F7),
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    )
+            )
+        }
+        // Horizontal transparent zoom ruler above the compact flat mode strip.
         if (!showSettings && !shutterPressed && editPhoto == null) {
             Box(Modifier.align(Alignment.BottomCenter).zIndex(12f)
-                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 290.dp else 178.dp, start = 13.dp, end = 13.dp)) {
+                .navigationBarsPadding().padding(bottom = if (mode == CameraMode.PRO && showProPanel) 285.dp else 180.dp, start = 18.dp, end = 18.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 if (!controller.isFrontCamera() && controller.rearLenses.size > 1) {
@@ -682,7 +693,7 @@ fun CameraScreen() {
                 motionEnabled = motionEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
                     .navigationBarsPadding()
-                    .padding(start = 9.dp, end = 9.dp, bottom = 122.dp),
+                    .padding(start = 14.dp, end = 14.dp, bottom = 121.dp),
                 onSelect = { candidate ->
                     if (candidate != mode && !captureBusy && !recordingVideo) {
                         previewView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -713,7 +724,7 @@ fun CameraScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp)
-                .background(Color(0xCE25272E), CircleShape)
+                .background(Color(0xF8FFFFFF), CircleShape)
                 .clickable(enabled = lastPhoto != null) {
                     lastPhoto?.let { uri ->
                         if (uri.toString().contains("/video/")) {
@@ -732,7 +743,7 @@ fun CameraScreen() {
                         modifier = Modifier.fillMaxSize().clip(CircleShape))
                 } else {
                     Icon(Icons.Rounded.PhotoLibrary, contentDescription = "View last photo",
-                        tint = if (lastPhoto == null) Color.LightGray else Color.White)
+                        tint = Color(0xFF252830))
                 }
             }
             // Keep shutter fixed and separate from the curved, tappable mode selector.
@@ -794,7 +805,7 @@ fun CameraScreen() {
                 }
             }
             Box(Modifier.size(43.dp)
-                .background(Color(0xCE25272E), CircleShape)
+                .background(Color(0xF8FFFFFF), CircleShape)
                 .clickable(enabled = !captureBusy && !recordingVideo) {
                     showSettings = false
                     showProPanel = false
