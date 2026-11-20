@@ -30,11 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
-private val paper = Color(0xFFF4F5F7)
-private val ink = Color(0xFF252830)
-private val secondaryInk = Color(0xFF767D87)
-private val hairline = Color(0xFFE7E9ED)
-private val idleControl = Color(0xFFE9EBEE)
+private val paper = Color(0xFF0E1015)
+private val ink = Color.White
+private val secondaryInk = Color(0xFF9AA1AD)
+private val hairline = Color(0xFF333740)
+private val idleControl = Color(0xFF2C3039)
+private val cardSurface = Color(0xFF1A1D24)
 
 /** Fully native, flat Settings screen. No blur or full-screen transitions. */
 @Composable
@@ -66,7 +67,7 @@ fun ViewfinderSettings(
         ) {
             Box(
                 Modifier.size(40.dp)
-                    .background(Color.White, CircleShape)
+                    .background(idleControl, CircleShape)
                     .clickable(onClick = onClose),
                 contentAlignment = Alignment.Center
             ) {
@@ -87,12 +88,12 @@ fun ViewfinderSettings(
             tabs.forEachIndexed { index, title ->
                 val active = tab == title
                 val fill by animateColorAsState(
-                    targetValue = if (active) ink else Color.White,
+                    targetValue = if (active) PocamPalette.Orange else cardSurface,
                     animationSpec = if (motionEnabled) tween(140) else snap(),
                     label = "settings-tab-fill"
                 )
                 val textColor by animateColorAsState(
-                    targetValue = if (active) Color.White else ink,
+                    targetValue = if (active) PocamPalette.Black else ink,
                     animationSpec = if (motionEnabled) tween(140) else snap(),
                     label = "settings-tab-ink"
                 )
@@ -196,7 +197,7 @@ fun ViewfinderSettings(
                                 Text("Charcoal, white and Pocam orange",
                                     fontSize = 10.sp, color = secondaryInk)
                             }
-                            listOf(ink, Color.White, PocamPalette.Orange).forEach { color ->
+                            listOf(PocamPalette.Carbon, PocamPalette.Silver, PocamPalette.Orange).forEach { color ->
                                 Box(Modifier.padding(start = 6.dp).size(24.dp)
                                     .background(color, CircleShape)
                                     .border(.7.dp, hairline, CircleShape))
@@ -216,8 +217,8 @@ fun ViewfinderSettings(
                                 onValueChangeFinished = { onHeaderOpacity(draftOpacity) },
                                 valueRange = .45f..1f,
                                 colors = SliderDefaults.colors(
-                                    thumbColor = ink,
-                                    activeTrackColor = ink,
+                                    thumbColor = PocamPalette.Orange,
+                                    activeTrackColor = PocamPalette.Orange,
                                     inactiveTrackColor = hairline
                                 )
                             )
@@ -239,7 +240,7 @@ fun ViewfinderSettings(
                                     valueRange = exposureRange.first.toFloat()..
                                         exposureRange.last.toFloat(),
                                     colors = SliderDefaults.colors(
-                                        thumbColor = ink, activeTrackColor = ink,
+                                        thumbColor = PocamPalette.Orange, activeTrackColor = PocamPalette.Orange,
                                         inactiveTrackColor = hairline
                                     )
                                 )
@@ -278,7 +279,7 @@ private fun SettingsGroup(
         Text(title, color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 4.dp))
         Column(
-            Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(16.dp))
+            Modifier.fillMaxWidth().background(cardSurface, RoundedCornerShape(16.dp))
                 .padding(horizontal = 4.dp, vertical = 2.dp),
             content = content
         )
@@ -345,7 +346,7 @@ private fun FlatToggle(
         }
         Box(
             Modifier.width(42.dp).height(24.dp)
-                .background(if (value) ink else idleControl, CircleShape)
+                .background(if (value) PocamPalette.Orange else idleControl, CircleShape)
                 .padding(3.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -365,12 +366,12 @@ private fun FlatChip(
     onClick: () -> Unit
 ) {
     val fill by animateColorAsState(
-        targetValue = if (selected) ink else idleControl,
+        targetValue = if (selected) PocamPalette.Orange else idleControl,
         animationSpec = if (motionEnabled) tween(130) else snap(),
         label = "flat-chip-background"
     )
     val textColor by animateColorAsState(
-        targetValue = if (selected) Color.White else ink,
+        targetValue = if (selected) PocamPalette.Black else ink,
         animationSpec = if (motionEnabled) tween(130) else snap(),
         label = "flat-chip-text"
     )
