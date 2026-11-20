@@ -2,6 +2,8 @@ package com.pocam.camera.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,10 +40,10 @@ fun ViewfinderSettings(
     var tab by remember { mutableStateOf("Capture") }
     val orange = PocamPalette.Orange
     Column(modifier.fillMaxWidth(), verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        // Keep the Settings header flat like the camera's reference header.
         Row(Modifier.fillMaxWidth()
-            .background(PocamPalette.GlassLight, RoundedCornerShape(22.dp))
-            .border(1.dp, PocamPalette.Steel.copy(alpha=.38f), RoundedCornerShape(22.dp))
-            .padding(9.dp),
+            .background(PocamPalette.GlassLight)
+            .padding(horizontal=10.dp,vertical=9.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).background(PocamPalette.Graphite, CircleShape)
                 .clickable(onClick=onClose),contentAlignment=Alignment.Center) {
@@ -237,25 +240,58 @@ private fun SettingsInfo(icon:ImageVector,name:String,description:String) {
         }
     }
 }
+/**
+ * An instant, no-ripple native Compose control with an accessible switch role.
+ * Material3 Switch animates its thumb/track; this deliberate camera control
+ * updates in the same frame and makes the complete 48dp+ row tappable.
+ */
 @Composable
-private fun SettingsSwitch(icon:ImageVector,name:String,description:String,
-    value:Boolean,onChange:(Boolean)->Unit,enabled:Boolean=true) {
-    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-        Icon(icon,null,tint=if(enabled)PocamPalette.Silver else PocamPalette.Steel,
-            modifier=Modifier.size(21.dp))
+private fun SettingsSwitch(
+    icon: ImageVector, name: String, description: String,
+    value: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Row(
+        Modifier.fillMaxWidth()
+            .toggleable(
+                value = value,
+                onValueChange = onChange,
+                enabled = enabled,
+                role = Role.Switch,
+                interactionSource = interactionSource,
+                indication = null
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null,
+            tint = if (enabled) PocamPalette.Silver else PocamPalette.Steel,
+            modifier = Modifier.size(21.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(name,color=if(enabled)Color.White else PocamPalette.Steel,
-                fontSize=14.sp,fontWeight=FontWeight.Medium)
-            Text(description,color=PocamPalette.Silver,fontSize=11.sp)
+            Text(name, color = if (enabled) Color.White else PocamPalette.Steel,
+                fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(description, color = PocamPalette.Silver, fontSize = 11.sp)
         }
-        Switch(checked=value,onCheckedChange=onChange,enabled=enabled,
-            colors=SwitchDefaults.colors(
-                checkedTrackColor=PocamPalette.Orange,
-                checkedThumbColor=Color.White,
-                uncheckedTrackColor=PocamPalette.Graphite,
-                uncheckedThumbColor=PocamPalette.Silver
-            ))
+        Row(
+            Modifier.width(52.dp).height(32.dp)
+                .background(
+                    if (value) PocamPalette.Orange else PocamPalette.Graphite,
+                    CircleShape
+                )
+                .border(
+                    1.5.dp,
+                    if (value) PocamPalette.Orange else PocamPalette.Steel,
+                    CircleShape
+                )
+                .padding(4.dp),
+            horizontalArrangement = if (value) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(24.dp).background(
+                if (enabled) Color.White else PocamPalette.Silver,
+                CircleShape))
+        }
     }
 }
 @Composable private fun SettingsSeparator(){
