@@ -168,6 +168,8 @@ fun CameraScreen() {
     var activeLensId by remember { mutableStateOf<String?>(null) }
     var activeFocalMm by remember { mutableStateOf<Float?>(null) }
     var showProPanel by remember { mutableStateOf(false) }
+    // The design has three distinct states: closed, compact ruler, full presets.
+    var proTrayExpanded by remember { mutableStateOf(false) }
     val preferences = remember(context) { context.getSharedPreferences("pocam_ui", 0) }
     val scope = rememberCoroutineScope()
     var captureBusy by remember { mutableStateOf(false) }
@@ -283,7 +285,10 @@ fun CameraScreen() {
     BackHandler(enabled = showSettings || showProPanel || showMore) {
         when {
             showSettings -> showSettings = false
-            showProPanel -> showProPanel = false
+            showProPanel -> {
+                if (proTrayExpanded) proTrayExpanded = false
+                else showProPanel = false
+            }
             showMore -> showMore = false
         }
     }
@@ -637,7 +642,10 @@ fun CameraScreen() {
                 exposureIndex = exposureIndex,
                 exposureStepEv = controller.exposureStepEv(),
                 expanded = showProPanel,
-                onExpanded = { showProPanel = it },
+                onExpanded = { open ->
+                    if (open && !showProPanel) proTrayExpanded = false
+                    showProPanel = open
+                },
                 modifier = Modifier.align(Alignment.TopEnd).zIndex(14f)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                     // Slim 51dp rail starts directly below the compact top header.
@@ -656,7 +664,8 @@ fun CameraScreen() {
                 exposureRange = exposureRange,
                 exposureStepEv = controller.exposureStepEv(),
                 onExposure = { next -> exposureIndex = next; controller.setExposure(next) },
-                onCollapse = { showProPanel = false },
+                expanded = proTrayExpanded,
+                onDetailsToggle = { proTrayExpanded = !proTrayExpanded },
                 motionEnabled = motionEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(15f)
                     .navigationBarsPadding()
