@@ -179,6 +179,7 @@ fun CameraScreen() {
     var shutterSound by remember { mutableStateOf(preferences.getBoolean("shutter_sound", true)) }
     var videoStabilization by remember { mutableStateOf(preferences.getBoolean("video_stabilization", true)) }
     var headerOpacity by remember { mutableStateOf(preferences.getFloat("header_opacity", .85f)) }
+    var motionEnabled by remember { mutableStateOf(preferences.getBoolean("motion_enabled", true)) }
     LaunchedEffect(videoStabilization) { controller.setVideoStabilizationEnabled(videoStabilization) }
     LaunchedEffect(videoQuality) {
         controller.setVideoQuality(when (videoQuality) {
@@ -563,6 +564,11 @@ fun CameraScreen() {
                     timerSeconds = it
                     preferences.edit().putInt("timer", it).apply()
                 },
+                motionEnabled = motionEnabled,
+                onMotionEnabled = { enabled ->
+                    motionEnabled = enabled
+                    preferences.edit().putBoolean("motion_enabled", enabled).apply()
+                },
                 onClose = { showSettings = false }
             )
                 }
@@ -632,7 +638,8 @@ fun CameraScreen() {
                 modifier = Modifier.align(Alignment.TopEnd).zIndex(14f)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                     // Slim 51dp rail starts directly below the compact top header.
-                    .padding(top = if (showMore) 210.dp else 90.dp, end = 12.dp)
+                    .padding(top = if (showMore) 210.dp else 90.dp, end = 12.dp),
+                motionEnabled = motionEnabled
             )
         }
         // A compact Pro tray should respond immediately, not animate a translucent
@@ -659,6 +666,7 @@ fun CameraScreen() {
         if (!showSettings && editPhoto == null && !(mode == CameraMode.PRO && showProPanel)) {
             CurvedModeSelector(
                 selected = mode,
+                motionEnabled = motionEnabled,
                 modifier = Modifier.align(Alignment.BottomCenter).zIndex(13f)
                     .navigationBarsPadding()
                     .padding(start = 9.dp, end = 9.dp, bottom = 122.dp),
@@ -719,6 +727,7 @@ fun CameraScreen() {
                 contentAlignment = Alignment.Center) {
 
                 ShutterButton(busy = captureBusy, recording = recordingVideo,
+                    motionEnabled = motionEnabled,
                     onSound = { if (shutterSound) playUiTone() },
                     onCapture = {
                         if (captureBusy) return@ShutterButton
