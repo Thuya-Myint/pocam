@@ -137,7 +137,8 @@ fun ProControlRail(
 fun ProParameterTray(
     state: ProUiState, controller: CameraController, cameraGeneration: Int,
     exposureIndex: Int, exposureRange: IntRange, exposureStepEv: Float,
-    onExposure: (Int) -> Unit, onCollapse: () -> Unit,
+    onExposure: (Int) -> Unit,
+    expanded: Boolean, onDetailsToggle: () -> Unit,
     modifier: Modifier = Modifier, motionEnabled: Boolean = true
 ) {
     val caps = remember(controller, cameraGeneration) { controller.manualCapabilities() }
@@ -182,9 +183,15 @@ fun ProParameterTray(
                 }
             }
             Box(Modifier.size(25.dp).background(PocamPalette.Graphite, CircleShape)
-                .clickable(onClick=onCollapse), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.KeyboardArrowDown, "Close adjustment tray",
-                    tint = Color.White, modifier = Modifier.size(17.dp))
+                .clickable(onClick = onDetailsToggle),
+                contentAlignment = Alignment.Center) {
+                Icon(
+                    if (expanded) Icons.Rounded.KeyboardArrowDown
+                    else Icons.Rounded.KeyboardArrowUp,
+                    contentDescription = if (expanded) "Show compact Pro controls"
+                        else "Show all Pro presets",
+                    tint = Color.White, modifier = Modifier.size(17.dp)
+                )
             }
         }
         Column(
@@ -209,7 +216,7 @@ fun ProParameterTray(
                             controller.setManualIso(isoAt(range, fraction))
                         }, showLabel = false, compact = true
                     )
-                    PresetRow(
+                    if (expanded) PresetRow(
                         listOf("AUTO", "100", "200", "400", "800"),
                         active=if(state.isoAuto) "AUTO" else value.toString()
                     ) { preset ->
@@ -241,7 +248,7 @@ fun ProParameterTray(
                             state.shutterAuto=false
                             controller.setManualExposureNs(shutterAt(range,f))
                         }, showLabel = false, compact = true)
-                    PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
+                    if (expanded) PresetRow(listOf("AUTO","1/30","1/60","1/125","1/250"),
                         active=if(state.shutterAuto) "AUTO" else shutterLabel(ns)) { preset ->
                         if(preset=="AUTO") { state.shutterFraction=0f; state.shutterAuto=true; controller.setManualExposureNs(null) }
                         else {
@@ -283,7 +290,7 @@ fun ProParameterTray(
                             controller.setManualFocus(f*distance)
                         },if(state.focusAuto) "AF" else "MF",
                         showLabel = false, compact = true)
-                    PresetRow(listOf("AUTO","MANUAL"),
+                    if (expanded) PresetRow(listOf("AUTO","MANUAL"),
                         if(state.focusAuto)"AUTO" else "MANUAL") { choice ->
                         state.focusAuto=choice=="AUTO"
                         controller.setManualFocus(
